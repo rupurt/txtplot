@@ -16,8 +16,8 @@ Use `README.md` for the fast overview. Use this guide when you want to choose th
 | If you are building... | Start with | Why |
 | --- | --- | --- |
 | Mathematical plots and charts | `ChartContext` | Axes, auto-range, scales, labels, and chart helpers are already built in |
-| The same plots with a different cell renderer | `QuadrantChartContext` or `CellChartContext<R>` | Same charting flow, different terminal cell encoding |
-| 3D scenes, games, sprites, dashboards, or custom UIs | `BrailleCanvas`, `QuadrantCanvas`, or `CellCanvas<R>` | Direct pixel control without chart assumptions |
+| The same plots with a different cell renderer | `HalfBlockChartContext`, `QuadrantChartContext`, or `CellChartContext<R>` | Same charting flow, different terminal cell encoding |
+| 3D scenes, games, sprites, dashboards, or custom UIs | `BrailleCanvas`, `HalfBlockCanvas`, `QuadrantCanvas`, or `CellCanvas<R>` | Direct pixel control without chart assumptions |
 
 Rule of thumb:
 
@@ -44,10 +44,11 @@ Use `QuadrantChartContext`, `QuadrantCanvas`, or `CellChartContext<QuadrantRende
 
 ### HalfBlocks
 
-HalfBlocks are not shipped yet.
+Use `HalfBlockChartContext`, `HalfBlockCanvas`, or `CellChartContext<HalfBlockRenderer>` when you want the half-block renderer.
 
-- They need a richer cell color/state model than the current foreground-only design
-- The renderer infrastructure now exists, but HalfBlocks are the next renderer-specific slice
+- `1x2` sub-pixels per cell
+- Uses foreground and background ANSI channels to split top and bottom halves
+- Useful for dashboards, sprite-like UI, and bold chart variants where color contrast matters more than maximum density
 
 ## Mathematical Plots
 
@@ -194,7 +195,7 @@ This is the preferred path for:
 Use the examples directory by intent:
 
 - `demo` for the general chart gallery
-- `renderer_showcase` for Braille vs quadrant comparison
+- `renderer_showcase` for Braille vs half-block vs quadrant comparison
 - `vol_surface` for 3D projected surfaces
 - `3dengine` for low-level 3D raster patterns
 - `solarsystem_kepler` for larger scene orchestration

@@ -1,4 +1,4 @@
-use super::{BrailleCanvas, QuadrantCanvas};
+use super::{BrailleCanvas, HalfBlockCanvas, QuadrantCanvas};
 use colored::Color;
 
 #[test]
@@ -66,6 +66,47 @@ fn quadrant_canvas_renders_quadrant_blocks() {
     canvas.set_pixel_screen(1, 0, None);
     canvas.set_pixel_screen(0, 1, None);
     assert_eq!(canvas.render_no_color(), "█\n");
+}
+
+#[test]
+fn half_block_canvas_uses_renderer_dimensions() {
+    let canvas = HalfBlockCanvas::new(3, 2);
+    assert_eq!(canvas.pixel_width(), 3);
+    assert_eq!(canvas.pixel_height(), 4);
+}
+
+#[test]
+fn half_block_canvas_renders_full_blocks_without_color() {
+    let mut canvas = HalfBlockCanvas::new(1, 1);
+    canvas.set_pixel_screen(0, 0, Some(Color::Red));
+    canvas.set_pixel_screen(0, 1, Some(Color::Blue));
+    assert_eq!(canvas.render_no_color(), "█\n");
+}
+
+#[test]
+fn half_block_canvas_splits_foreground_and_background_colors() {
+    let mut canvas = HalfBlockCanvas::new(1, 1);
+    canvas.set_pixel_screen(0, 0, Some(Color::Red));
+    canvas.set_pixel_screen(0, 1, Some(Color::Blue));
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[31m"));
+    assert!(rendered.contains("\x1b[44m"));
+    assert!(rendered.contains("▀"));
+}
+
+#[test]
+fn half_block_canvas_uses_cell_background_for_empty_half() {
+    let mut canvas = HalfBlockCanvas::new(1, 1);
+    canvas.set_pixel_screen(0, 0, Some(Color::BrightWhite));
+    canvas.set_cell_background_screen(0, 0, Some(Color::BrightBlack));
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[97m"));
+    assert!(rendered.contains("\x1b[100m"));
+    assert!(rendered.contains("▀"));
 }
 
 #[test]

@@ -6,7 +6,9 @@ mod series;
 #[cfg(test)]
 mod tests;
 
-use crate::canvas::{BrailleRenderer, CellCanvas, CellRenderer, QuadrantRenderer};
+use crate::canvas::{
+    BrailleRenderer, CellCanvas, CellRenderer, HalfBlockRenderer, QuadrantRenderer,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AxisScale {
@@ -44,6 +46,7 @@ pub struct CellChartContext<R: CellRenderer> {
 
 pub type BrailleChartContext = CellChartContext<BrailleRenderer>;
 pub type ChartContext = CellChartContext<BrailleRenderer>;
+pub type HalfBlockChartContext = CellChartContext<HalfBlockRenderer>;
 pub type QuadrantChartContext = CellChartContext<QuadrantRenderer>;
 
 #[derive(Clone, Copy)]

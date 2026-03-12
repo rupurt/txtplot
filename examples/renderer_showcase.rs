@@ -1,5 +1,8 @@
 use colored::Color;
-use txtplot::{CellCanvas, CellChartContext, CellRenderer, ChartContext, QuadrantChartContext};
+use txtplot::{
+    CellCanvas, CellChartContext, CellRenderer, ChartContext, HalfBlockChartContext,
+    QuadrantChartContext,
+};
 
 fn build_signal_chart<R: CellRenderer>() -> CellChartContext<R> {
     let mut chart = CellChartContext::<R>::with_dimensions(56, 14);
@@ -81,21 +84,29 @@ fn print_chart<R: CellRenderer>(name: &str, chart: &CellChartContext<R>) {
 
 fn main() {
     let braille_chart = build_signal_chart::<txtplot::BrailleRenderer>();
+    let half_block_chart = build_signal_chart::<txtplot::HalfBlockRenderer>();
     let quadrant_chart = build_signal_chart::<txtplot::QuadrantRenderer>();
     let braille_canvas = build_raster_demo::<txtplot::BrailleRenderer>();
+    let half_block_canvas = build_raster_demo::<txtplot::HalfBlockRenderer>();
     let quadrant_canvas = build_raster_demo::<txtplot::QuadrantRenderer>();
 
     println!("Renderer showcase for txtplot\n");
     println!("Braille remains the default renderer used by ChartContext::new(...).\n");
 
     let _default_chart: ChartContext = build_signal_chart::<txtplot::BrailleRenderer>();
+    let _half_block_chart: HalfBlockChartContext =
+        build_signal_chart::<txtplot::HalfBlockRenderer>();
     let _quadrant_chart: QuadrantChartContext = build_signal_chart::<txtplot::QuadrantRenderer>();
 
     print_chart("Braille", &braille_chart);
     println!();
+    print_chart("HalfBlock", &half_block_chart);
+    println!();
     print_chart("Quadrant", &quadrant_chart);
     println!();
     print_canvas("Braille", &braille_canvas);
+    println!();
+    print_canvas("HalfBlock", &half_block_canvas);
     println!();
     print_canvas("Quadrant", &quadrant_canvas);
 }

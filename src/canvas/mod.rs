@@ -12,7 +12,7 @@ use colored::Color;
 use std::marker::PhantomData;
 
 pub use renderer::CellAppearance;
-pub use renderer::{BrailleRenderer, CellRenderer, QuadrantRenderer};
+pub use renderer::{BrailleRenderer, CellRenderer, HalfBlockRenderer, QuadrantRenderer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ColorBlend {
@@ -36,6 +36,7 @@ pub struct CellCanvas<R: CellRenderer> {
 }
 
 pub type BrailleCanvas = CellCanvas<BrailleRenderer>;
+pub type HalfBlockCanvas = CellCanvas<HalfBlockRenderer>;
 pub type QuadrantCanvas = CellCanvas<QuadrantRenderer>;
 
 impl<R: CellRenderer> CellCanvas<R> {
@@ -50,22 +51,15 @@ impl<R: CellRenderer> CellCanvas<R> {
         }
 
         let index = self.idx(px / R::CELL_WIDTH, py / R::CELL_HEIGHT);
-        R::set_subpixel(
+        R::apply_subpixel(
             &mut self.buffer[index],
             px % R::CELL_WIDTH,
             py % R::CELL_HEIGHT,
+            color,
+            self.blend_mode,
+            &mut self.colors[index],
+            &mut self.background_colors[index],
         );
-
-        if let Some(c) = color {
-            match self.blend_mode {
-                ColorBlend::Overwrite => self.colors[index] = Some(c),
-                ColorBlend::KeepFirst => {
-                    if self.colors[index].is_none() {
-                        self.colors[index] = Some(c);
-                    }
-                }
-            }
-        }
     }
 
     fn unset_pixel_impl(&mut self, px: usize, py: usize) {
@@ -74,14 +68,13 @@ impl<R: CellRenderer> CellCanvas<R> {
         }
 
         let index = self.idx(px / R::CELL_WIDTH, py / R::CELL_HEIGHT);
-        R::unset_subpixel(
+        R::clear_subpixel(
             &mut self.buffer[index],
             px % R::CELL_WIDTH,
             py % R::CELL_HEIGHT,
+            &mut self.colors[index],
+            &mut self.background_colors[index],
         );
-        if R::is_empty(self.buffer[index]) {
-            self.colors[index] = None;
-        }
     }
 
     fn set_cell_background_impl(&mut self, col: usize, row: usize, color: Option<Color>) {

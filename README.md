@@ -2,7 +2,7 @@
 
 High-performance terminal plotting for Rust.
 
-`txtplot` renders mathematical plots, 3D visualizations, games, and complex terminal interfaces using Unicode Braille characters and ANSI colors.
+`txtplot` renders mathematical plots, 3D visualizations, games, and complex terminal interfaces using Unicode Braille and block characters plus ANSI colors.
 
 Unlike many TUI plotting libraries, `txtplot` is designed for speed: it uses flat memory buffers (`Vec<u8>`), bitwise operations, clipping, and a zero-allocation rendering path to support real-time terminal graphics.
 
@@ -24,6 +24,7 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
 ## Key Features
 
 - High resolution: 8 sub-pixels per character (Braille 2x4). A 100x50 terminal yields a 200x200 effective pixel canvas.
+- Pluggable cell renderers: Braille (`2x4`), HalfBlock (`1x2`), and Quadrant (`2x2`)
 - Performance-oriented design:
   - flat buffers for cache-friendly access
   - zero-allocation rendering via `render_to`
@@ -122,7 +123,7 @@ fn main() -> fmt::Result {
 
 ### Renderer Showcase
 
-Braille remains the default renderer, and the new quadrant renderer is available through `QuadrantCanvas` and `QuadrantChartContext`. The showcase example renders the same chart and raster scene through both encodings:
+Braille remains the default renderer, and `HalfBlockCanvas` / `HalfBlockChartContext` plus `QuadrantCanvas` / `QuadrantChartContext` provide alternate encodings. The showcase example renders the same chart and raster scene through all three renderers:
 
 ```bash
 cargo run --release --example renderer_showcase
@@ -204,7 +205,7 @@ cargo run --release --example primitives_demo
 cargo run --release --example vol_surface
 ```
 
-4. Braille vs quadrant renderer showcase
+4. Braille, half-block, and quadrant renderer showcase
 
 ```bash
 cargo run --release --example renderer_showcase
@@ -259,7 +260,8 @@ In a benchmark with a 236x104 sub-pixel canvas filled with trigonometric noise a
 - [x] Color blending policies
 - [x] Logarithmic scaling support
 - [ ] Automatic legend box
-- [ ] Trait-based pluggable terminal renderers
+- [x] Trait-based pluggable terminal renderers
+- [ ] Runtime renderer selection helpers
 
 ## License
 
