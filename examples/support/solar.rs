@@ -104,3 +104,41 @@ pub fn plot_z(
         chart.canvas.set_pixel_screen(ux, uy, Some(color));
     }
 }
+
+pub fn line_z(
+    chart: &mut ChartContext,
+    zbuf: &mut PickingZBuffer,
+    start: (isize, isize, f64),
+    end: (isize, isize, f64),
+    color: Color,
+) {
+    let min_x = start.0.min(end.0);
+    let max_x = start.0.max(end.0);
+    let min_y = start.1.min(end.1);
+    let max_y = start.1.max(end.1);
+
+    if max_x < 0 || min_x >= zbuf.width as isize || max_y < 0 || min_y >= zbuf.height as isize {
+        return;
+    }
+
+    let steps = (end.0 - start.0).abs().max((end.1 - start.1).abs()).max(1) as usize;
+    if steps > 1500 {
+        return;
+    }
+
+    for step in 0..=steps {
+        let t = step as f64 / steps as f64;
+        let x = start.0 as f64 + (end.0 - start.0) as f64 * t;
+        let y = start.1 as f64 + (end.1 - start.1) as f64 * t;
+        let z = start.2 + (end.2 - start.2) * t;
+        plot_z(
+            chart,
+            zbuf,
+            x.round() as isize,
+            y.round() as isize,
+            z,
+            color,
+            None,
+        );
+    }
+}

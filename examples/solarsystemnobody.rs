@@ -1,3 +1,5 @@
+mod support;
+
 use colored::Color;
 use crossterm::{
     cursor,
@@ -12,91 +14,11 @@ use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, Instant};
+use support::solar::{line_z, plot_z, PickingZBuffer as ZBuffer};
+use support::three_d::{
+    make_sphere_points, project_with_projection, rotate_x, rotate_y, Projection, Vec3,
+};
 use txtplot::ChartContext;
-
-// ============================================================================
-// 3D MATH
-// ============================================================================
-#[derive(Clone, Copy, Debug)]
-struct Vec3 {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-impl Vec3 {
-    fn new(x: f64, y: f64, z: f64) -> Self {
-        Self { x, y, z }
-    }
-    fn add(self, o: Vec3) -> Self {
-        Self::new(self.x + o.x, self.y + o.y, self.z + o.z)
-    }
-    fn sub(self, o: Vec3) -> Self {
-        Self::new(self.x - o.x, self.y - o.y, self.z - o.z)
-    }
-    fn mul(self, s: f64) -> Self {
-        Self::new(self.x * s, self.y * s, self.z * s)
-    }
-    fn dot(self, o: Vec3) -> f64 {
-        self.x * o.x + self.y * o.y + self.z * o.z
-    }
-    fn norm(self) -> f64 {
-        self.dot(self).sqrt()
-    }
-    fn normalize(self) -> Self {
-        let l = self.norm();
-        if l > 0.0 {
-            Self::new(self.x / l, self.y / l, self.z / l)
-        } else {
-            self
-        }
-    }
-}
-
-fn rotate_x(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x, v.y * c - v.z * s, v.y * s + v.z * c)
-}
-fn rotate_y(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x * c - v.z * s, v.y, v.x * s + v.z * c)
-}
-// ============================================================================
-// GRAPHICS ENGINE (Z-BUFFER)
-// ============================================================================
-struct ZBuffer {
-    w: usize,
-    h: usize,
-    z: Vec<f64>,
-    id: Vec<Option<usize>>,
-}
-impl ZBuffer {
-    fn new(w: usize, h: usize) -> Self {
-        Self {
-            w,
-            h,
-            z: vec![f64::INFINITY; w * h],
-            id: vec![None; w * h],
-        }
-    }
-    fn clear(&mut self) {
-        self.z.fill(f64::INFINITY);
-        self.id.fill(None);
-    }
-    #[inline]
-    fn idx(&self, x: usize, y: usize) -> usize {
-        y * self.w + x
-    }
-    fn test_and_set(&mut self, x: usize, y: usize, depth: f64, body_id: Option<usize>) -> bool {
-        let i = self.idx(x, y);
-        if depth < self.z[i] {
-            self.z[i] = depth;
-            self.id[i] = body_id;
-            true
-        } else {
-            false
-        }
-    }
-}
 
 // ============================================================================
 // GRAVITY: NEWTONIAN N-BODY PHYSICS
@@ -166,95 +88,6 @@ fn create_body(
         rot_angle: 0.0,
         rot_rate: rot,
         trail: VecDeque::with_capacity(150),
-    }
-}
-
-// ============================================================================
-// DRAWING FUNCTIONS
-// ============================================================================
-fn make_sphere_points(lat_steps: usize, lon_steps: usize) -> Vec<Vec3> {
-    let mut pts = Vec::with_capacity(lat_steps * lon_steps);
-    for i in 0..lat_steps {
-        let v = i as f64 / (lat_steps - 1).max(1) as f64;
-        let theta = v * std::f64::consts::PI;
-        let (st, ct) = theta.sin_cos();
-        for j in 0..lon_steps {
-            let u = j as f64 / lon_steps as f64;
-            let phi = u * std::f64::consts::TAU;
-            pts.push(Vec3::new(st * phi.cos(), ct, st * phi.sin()));
-        }
-    }
-    pts
-}
-
-fn project_to_screen(v_cam: Vec3, w: f64, h: f64, scale: f64) -> Option<(isize, isize, f64)> {
-    if v_cam.z <= 1.5 {
-        return None;
-    } // Camera culling
-    let px = (v_cam.x / v_cam.z) * 2.0;
-    let py = v_cam.y / v_cam.z;
-    Some((
-        (w / 2.0 + px * scale).round() as isize,
-        (h / 2.0 + py * scale).round() as isize,
-        v_cam.z,
-    ))
-}
-
-fn plot_z(
-    chart: &mut ChartContext,
-    zb: &mut ZBuffer,
-    x: isize,
-    y: isize,
-    z: f64,
-    col: Color,
-    id: Option<usize>,
-) {
-    if x < 0 || y < 0 {
-        return;
-    }
-    let (ux, uy) = (x as usize, y as usize);
-    if ux < zb.w && uy < zb.h && zb.test_and_set(ux, uy, z, id) {
-        chart.canvas.set_pixel_screen(ux, uy, Some(col));
-    }
-}
-
-fn line_z(
-    chart: &mut ChartContext,
-    zb: &mut ZBuffer,
-    p1: (isize, isize, f64),
-    p2: (isize, isize, f64),
-    col: Color,
-) {
-    let min_x = p1.0.min(p2.0);
-    let max_x = p1.0.max(p2.0);
-    let min_y = p1.1.min(p2.1);
-    let max_y = p1.1.max(p2.1);
-
-    if max_x < 0 || min_x >= zb.w as isize || max_y < 0 || min_y >= zb.h as isize {
-        return;
-    }
-
-    let dx = (p2.0 - p1.0).abs();
-    let dy = (p2.1 - p1.1).abs();
-    let steps = dx.max(dy).max(1) as i32;
-    if steps > 1500 {
-        return;
-    }
-
-    for s in 0..=steps {
-        let t = s as f64 / steps as f64;
-        let xf = p1.0 as f64 + (p2.0 as f64 - p1.0 as f64) * t;
-        let yf = p1.1 as f64 + (p2.1 as f64 - p1.1 as f64) * t;
-        let zf = p1.2 + (p2.2 - p1.2) * t;
-        plot_z(
-            chart,
-            zb,
-            xf.round() as isize,
-            yf.round() as isize,
-            zf,
-            col,
-            None,
-        );
     }
 }
 
@@ -392,8 +225,8 @@ fn main() -> io::Result<()> {
 
         // --- INPUT ---
         while event::poll(Duration::from_millis(0))? {
-            if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                match code {
+            match event::read()? {
+                Event::Key(KeyEvent { code, .. }) => match code {
                     KeyCode::Char('q') | KeyCode::Esc => {
                         execute!(
                             stdout,
@@ -476,47 +309,15 @@ fn main() -> io::Result<()> {
                         }
                     }
                     _ => {}
-                }
-            } else if let Event::Mouse(me) = event::read()? {
-                let get_clicked_id = |c: u16, r: u16, zb: &ZBuffer| -> Option<usize> {
-                    let mx = (c.saturating_sub(2) as isize) * 2;
-                    let my = (r.saturating_sub(2) as isize) * 4;
-                    let mut cl_id = None;
-                    let mut min_dist = 40.0;
-                    let mut close_z = f64::INFINITY;
-                    for py in (my - 40).max(0) as usize..=(my + 40).min(zb.h as isize - 1) as usize
-                    {
-                        for px in
-                            (mx - 40).max(0) as usize..=(mx + 40).min(zb.w as isize - 1) as usize
-                        {
-                            if let Some(id) = zb.id[zb.idx(px, py)] {
-                                let dist = ((px as f64 - mx as f64).powi(2)
-                                    + (py as f64 - my as f64).powi(2))
-                                .sqrt();
-                                if dist < min_dist {
-                                    min_dist = dist;
-                                    close_z = zb.z[zb.idx(px, py)];
-                                    cl_id = Some(id);
-                                } else if (dist - min_dist).abs() < 1.0
-                                    && zb.z[zb.idx(px, py)] < close_z
-                                {
-                                    close_z = zb.z[zb.idx(px, py)];
-                                    cl_id = Some(id);
-                                }
-                            }
-                        }
-                    }
-                    cl_id
-                };
-
-                match me.kind {
+                },
+                Event::Mouse(me) => match me.kind {
                     MouseEventKind::Down(MouseButton::Left) => {
                         is_dragging = true;
                         last_mouse_pos = Some((me.column, me.row));
-                        selected_body = get_clicked_id(me.column, me.row, zb);
+                        selected_body = zb.pick_body(me.column, me.row);
                     }
                     MouseEventKind::Down(MouseButton::Right) => {
-                        follow_body = get_clicked_id(me.column, me.row, zb);
+                        follow_body = zb.pick_body(me.column, me.row);
                         if follow_body.is_some() {
                             selected_body = follow_body;
                         }
@@ -576,7 +377,8 @@ fn main() -> io::Result<()> {
                         }
                     }
                     _ => {}
-                }
+                },
+                _ => {}
             }
         }
 
@@ -657,7 +459,12 @@ fn main() -> io::Result<()> {
             let mut v_cam = v_world.sub(camera_target_offset).sub(cam_pos);
             v_cam = rotate_y(v_cam, -cam_yaw);
             v_cam = rotate_x(v_cam, -cam_pitch);
-            project_to_screen(v_cam, cw, ch, scale)
+            project_with_projection(
+                v_cam,
+                cw,
+                ch,
+                Projection::new(1.5, 0.5, 0.5, scale * 2.0, scale),
+            )
         };
 
         for (i, body) in bodies.iter().enumerate() {
