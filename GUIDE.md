@@ -1,105 +1,219 @@
-# Contributor Guide
+# User Guide
 
-This guide explains how to extend `txtplot` without fighting the current structure.
+This guide is for people using `txtplot` to build:
 
-## Start Here
+- mathematical plots
+- 3D visualizations
+- games
+- complex terminal interfaces
 
-1. Read `README.md` for the user-facing feature set.
-2. Read `CONSTITUTION.md` for the project rules.
-3. Read `ARCHITECTURE.md` for the code layout.
-4. Use this guide for concrete change workflows.
+Use `README.md` for the fast overview. Use this guide when you want to choose the right API surface, renderer, and usage pattern for your application.
 
-## Local Setup
+## Choose the Right API
 
-### With Nix
+`txtplot` has two main layers:
 
-```bash
-nix develop
+| If you are building... | Start with | Why |
+| --- | --- | --- |
+| Mathematical plots and charts | `ChartContext` | Axes, auto-range, scales, labels, and chart helpers are already built in |
+| The same plots with a different cell renderer | `QuadrantChartContext` or `CellChartContext<R>` | Same charting flow, different terminal cell encoding |
+| 3D scenes, games, sprites, dashboards, or custom UIs | `BrailleCanvas`, `QuadrantCanvas`, or `CellCanvas<R>` | Direct pixel control without chart assumptions |
+
+Rule of thumb:
+
+- If your data starts as `(x, y)` values, use `ChartContext`
+- If your data starts as projected pixels, use a canvas directly
+
+## Renderer Choice
+
+### Braille
+
+Use `ChartContext` or `BrailleCanvas` when you want the default renderer.
+
+- Highest current spatial density: `2x4` sub-pixels per terminal cell
+- Best fit for mathematical plots, dense curves, and fine detail
+- This is the default path used throughout the crate
+
+### Quadrants
+
+Use `QuadrantChartContext`, `QuadrantCanvas`, or `CellChartContext<QuadrantRenderer>` when you want the quadrant renderer.
+
+- `2x2` sub-pixels per cell
+- Bolder and simpler terminal glyphs
+- Useful when you want chunkier shapes or to compare cell encodings
+
+### HalfBlocks
+
+HalfBlocks are not shipped yet.
+
+- They need a richer cell color/state model than the current foreground-only design
+- The renderer infrastructure now exists, but HalfBlocks are the next renderer-specific slice
+
+## Mathematical Plots
+
+For plots, the normal flow is:
+
+1. Create a `ChartContext`
+2. Set scales if needed
+3. Draw a grid or axes
+4. Plot functions or series
+5. Render the canvas
+
+Basic shape:
+
+```rust
+use colored::Color;
+use txtplot::ChartContext;
+
+fn main() {
+    let mut chart = ChartContext::new(60, 15);
+    chart.draw_grid(10, 4, Some(Color::BrightBlack));
+    chart.draw_axes((0.0, 10.0), (-1.5, 1.5), Some(Color::White));
+    chart.plot_function(|x: f64| x.sin(), 0.0, 10.0, Some(Color::Cyan));
+    println!("{}", chart.canvas.render());
+}
 ```
 
-### Common commands
+Useful plot features:
 
-```bash
-just
-just fmt
-just fmt-check
-just cargo-check
-just clippy
-just test
+- `scatter()` for point clouds
+- `line_chart()` for connected series
+- `bar_chart()` and `pie_chart()` for categorical summaries
+- `plot_function()` for mathematical curves
+- `get_auto_range()` and `get_auto_range_scaled()` for automatic axes
+- `AxisScale::Log10` for logarithmic plots
+
+If you want the same chart flow with a different renderer:
+
+```rust
+use colored::Color;
+use txtplot::QuadrantChartContext;
+
+fn main() {
+    let mut chart = QuadrantChartContext::with_dimensions(60, 15);
+    chart.draw_axes((0.0, 10.0), (-1.0, 1.0), Some(Color::White));
+    chart.plot_function(|x: f64| x.sin(), 0.0, 10.0, Some(Color::Cyan));
+    println!("{}", chart.canvas.render());
+}
 ```
 
-## Common Extension Workflows
+## 3D Visualizations
 
-### Add a drawing primitive
+`txtplot` does not provide a high-level scene graph or camera API. The intended pattern is:
 
-Use this path when the change is fundamentally pixel-oriented.
+1. Keep your own scene, camera, and projection math
+2. Project world-space points into screen-space pixels
+3. Draw with `set_pixel_screen()`, `line_screen()`, and text helpers
+4. Add your own z-buffer or visibility logic if needed
 
-1. Implement the primitive in the appropriate file under `src/canvas/`
-2. Reuse existing mask, color, clipping, and coordinate helpers
-3. Expose a public method only if downstream users need it directly
-4. Add or update an example when the new primitive is easier to understand visually
+This works well because the canvas is just a fast terminal raster target.
 
-Use this for things like:
+Recommended examples:
 
-- new shape rasterizers
-- new overlay behavior
-- new screen/cartesian pixel operations
+- `cargo run --release --example vol_surface`
+- `cargo run --release --example 3dengine`
+- `cargo run --release --example solarsystem_kepler`
 
-### Add a chart helper
+When building 3D views:
 
-Use this path when the change is data-oriented.
+- Prefer screen-space APIs (`*_screen`) after projection
+- Keep your z-buffer outside the canvas
+- Reuse a single canvas per frame and call `clear()`
+- Use `render_to()` when you want a reusable output buffer
 
-1. Implement the helper in the appropriate file under `src/charts/`
-2. Reuse the existing scale, range, and mapping helpers
-3. Keep tick generation and axis semantics centralized
-4. Prefer composing through `ChartContext` instead of reaching into canvas internals from callers
+## Games and Complex Terminal Interfaces
 
-Use this for things like:
+For games, simulations, dashboards, and custom TUIs, start with a canvas instead of the chart layer.
 
-- new chart types
-- new axis behaviors
-- new scale-aware annotation helpers
+Typical flow:
 
-### Add a new public type or export
+1. Create a canvas once
+2. Clear and redraw each frame
+3. Use screen coordinates for sprites, UI chrome, and projected geometry
+4. Overlay text with `set_char()`
+5. Render into a reusable `String` with `render_to()`
 
-1. Add the type in the owning module
-2. Export it from `src/lib.rs` if it is part of the public crate contract
-3. Add it to `src/prelude.rs` only if it improves common downstream use
-4. Update `README.md` if users should discover it immediately
+Good fits for direct-canvas work:
 
-### Add tooling or contributor ergonomics
+- sprite movement
+- particle systems
+- minimaps and status HUDs
+- terminal dashboards
+- custom widgets that do not map cleanly to `(x, y)` data
 
-1. Update `flake.nix` for shell dependencies
-2. Update `justfile` only for repeated workflows
-3. Document the change in `CONFIGURATION.md`
+Recommended examples:
 
-## Examples and Benchmarks
+- `cargo run --release --example sprite_demo`
+- `cargo run --release --example renderer_showcase`
+- `cargo run --release --example fractalmove`
 
-Use the repository support directories intentionally:
+## Coordinate Systems
 
-- `examples/` is for runnable demonstrations and regression-friendly visual references
-- `benches/` is for performance measurement, not feature discovery
-- `scripts/` is for small maintenance helpers that are easier to keep as scripts than as just recipes
+Use the right coordinate mode for the job:
 
-## Searching the Repository
+| API style | Origin | Best for |
+| --- | --- | --- |
+| Cartesian (`set_pixel`, `line`) | Bottom-left | plots, math, chart primitives |
+| Screen (`set_pixel_screen`, `line_screen`) | Top-left | games, UIs, 3D projections, sprites |
 
-The Nix shell includes `sift`, which is useful when you need semantic or full-text search across the repo and related notes.
+If you already have projected screen coordinates, do not convert back into chart coordinates. Draw directly in screen space.
 
-Example:
+## Rendering Patterns
 
-```bash
-sift search . "logarithmic axes"
+### Simple output
+
+Use `render()` when convenience matters more than allocations:
+
+```rust
+println!("{}", chart.canvas.render());
 ```
 
-## Planning Larger Extensions
+### Reused output buffer
 
-The Nix shell also includes `keel`. This repository does not require Keel for day-to-day development, but it is available if you want structured planning for larger changes, experiments, or release work.
+Use `render_to()` in real-time loops:
 
-## Change Hygiene
+```rust
+use std::fmt;
 
-Before you call a change complete:
+fn draw_frame(chart: &txtplot::ChartContext, buffer: &mut String) -> fmt::Result {
+    buffer.clear();
+    chart.canvas.render_to(buffer, true, Some("frame"))?;
+    Ok(())
+}
+```
 
-1. Make sure the code lives in the right module
-2. Make sure public exports are intentional
-3. Make sure docs changed with structural changes
-4. Use examples when visual behavior needs a concrete reference
+This is the preferred path for:
+
+- animations
+- games
+- live dashboards
+- anything redrawing many times per second
+
+## Example Map
+
+Use the examples directory by intent:
+
+- `demo` for the general chart gallery
+- `renderer_showcase` for Braille vs quadrant comparison
+- `vol_surface` for 3D projected surfaces
+- `3dengine` for low-level 3D raster patterns
+- `solarsystem_kepler` for larger scene orchestration
+- `sprite_demo` for direct-canvas sprite work
+- `fractalmove` for interactive rendering loops
+- `tsne_neighbors` for a richer analytical plotting example
+
+## Performance Checklist
+
+If performance matters:
+
+1. Run in release mode
+2. Reuse canvases instead of recreating them every frame
+3. Prefer `render_to()` over `render()` in loops
+4. Keep clipping and projection logic outside hot text formatting paths
+5. Choose the chart layer only when you actually need scales and axes
+
+## Where to Look Next
+
+- `README.md` for the quick-start path and feature overview
+- `examples/` for runnable patterns
+- `ARCHITECTURE.md` if you are modifying the crate itself rather than just using it

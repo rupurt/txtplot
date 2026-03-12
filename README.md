@@ -10,12 +10,12 @@ License: [MIT](LICENSE).
 
 ## Project Navigation
 
-This repository carries a small set of foundational documents for contributors and agents:
+This repository carries a small set of foundational documents for users, contributors, and agents:
 
 - [AGENTS.md](AGENTS.md) - implementation guidance for AI agents and contributors
 - [CONSTITUTION.md](CONSTITUTION.md) - project principles, decision hierarchy, and compatibility posture
 - [ARCHITECTURE.md](ARCHITECTURE.md) - module boundaries, data flow, and extension seams
-- [GUIDE.md](GUIDE.md) - practical workflows for extending the crate
+- [GUIDE.md](GUIDE.md) - user guide for plots, 3D visuals, games, and terminal interfaces
 - [CONFIGURATION.md](CONFIGURATION.md) - toolchain, shell, and API-level configuration surfaces
 - [RELEASE.md](RELEASE.md) - release checklist and versioning process
 

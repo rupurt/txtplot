@@ -4,7 +4,7 @@ This document describes the current implementation architecture of `txtplot`: th
 
 ## Scope
 
-This is the implementation contract for module ownership, data flow, and extension boundaries. Project principles live in `CONSTITUTION.md`. Contributor workflows live in `GUIDE.md`.
+This is the implementation contract for module ownership, data flow, and extension boundaries. Project principles live in `CONSTITUTION.md`. User-facing usage patterns live in `GUIDE.md`.
 
 ## Source Layout
 
