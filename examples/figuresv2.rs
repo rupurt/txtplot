@@ -1,3 +1,5 @@
+mod support;
+
 use colored::Color;
 use crossterm::{
     cursor,
@@ -5,173 +7,17 @@ use crossterm::{
     execute,
     terminal::{self, ClearType},
 };
-use std::io::Write;
+use std::io::{self, Write};
 use std::{thread, time};
+use support::three_d::{
+    line_z, make_sphere_points, make_torus_rings, make_triangle, plot_z, project_to_screen,
+    rotate_x, rotate_y, Vec3, ZBuffer,
+};
 use txtplot::ChartContext;
 
-#[derive(Clone, Copy, Debug)]
-struct Vec3 {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-impl Vec3 {
-    fn new(x: f64, y: f64, z: f64) -> Self {
-        Self { x, y, z }
-    }
-    fn add(self, o: Vec3) -> Self {
-        Self::new(self.x + o.x, self.y + o.y, self.z + o.z)
-    }
-    fn sub(self, o: Vec3) -> Self {
-        Self::new(self.x - o.x, self.y - o.y, self.z - o.z)
-    }
-}
-
-fn rotate_x(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x, v.y * c - v.z * s, v.y * s + v.z * c)
-}
-fn rotate_y(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x * c - v.z * s, v.y, v.x * s + v.z * c)
-}
-
-/// Z-buffer per screen pixel.
-struct ZBuffer {
-    w: usize,
-    h: usize,
-    z: Vec<f64>,
-}
-impl ZBuffer {
-    fn new(w: usize, h: usize) -> Self {
-        Self {
-            w,
-            h,
-            z: vec![f64::INFINITY; w * h],
-        }
-    }
-    fn clear(&mut self) {
-        self.z.fill(f64::INFINITY);
-    }
-    #[inline]
-    fn idx(&self, x: usize, y: usize) -> usize {
-        y * self.w + x
-    }
-    /// Returns true if pixel should be drawn (nearer than current).
-    fn test_and_set(&mut self, x: usize, y: usize, depth: f64) -> bool {
-        let i = self.idx(x, y);
-        if depth < self.z[i] {
-            self.z[i] = depth;
-            true
-        } else {
-            false
-        }
-    }
-}
-
-fn project_to_screen(
-    v_cam: Vec3, // already in camera space
-    canvas_w: f64,
-    canvas_h: f64,
-    scale: f64,
-) -> Option<(isize, isize, f64)> {
-    // Perspective: keep z>0
-    if v_cam.z <= 0.06 {
-        return None;
-    }
-    let px = (v_cam.x / v_cam.z) * 2.0;
-    let py = v_cam.y / v_cam.z;
-
-    let cx = canvas_w / 2.0;
-    let cy = canvas_h / 2.0;
-
-    let sx = cx + px * scale;
-    let sy = cy + py * scale;
-
-    Some((sx.round() as isize, sy.round() as isize, v_cam.z))
-}
-
-fn make_sphere_points(lat_steps: usize, lon_steps: usize) -> Vec<Vec3> {
-    let mut pts = Vec::with_capacity(lat_steps * lon_steps);
-    for i in 0..lat_steps {
-        let v = i as f64 / (lat_steps - 1).max(1) as f64;
-        let theta = v * std::f64::consts::PI;
-        let st = theta.sin();
-        let ct = theta.cos();
-        for j in 0..lon_steps {
-            let u = j as f64 / lon_steps as f64;
-            let phi = u * std::f64::consts::TAU;
-            let (sp, cp) = phi.sin_cos();
-            pts.push(Vec3::new(st * cp, ct, st * sp));
-        }
-    }
-    pts
-}
-
-fn make_torus_rings(r_major: f64, r_minor: f64, u_steps: usize, v_steps: usize) -> Vec<Vec<Vec3>> {
-    let mut rings = Vec::with_capacity(u_steps);
-    for i in 0..u_steps {
-        let u = i as f64 / u_steps as f64 * std::f64::consts::TAU;
-        let (su, cu) = u.sin_cos();
-        let mut ring = Vec::with_capacity(v_steps + 1);
-        for j in 0..=v_steps {
-            let v = j as f64 / v_steps as f64 * std::f64::consts::TAU;
-            let (sv, cv) = v.sin_cos();
-            let x = (r_major + r_minor * cv) * cu;
-            let y = r_minor * sv;
-            let z = (r_major + r_minor * cv) * su;
-            ring.push(Vec3::new(x, y, z));
-        }
-        rings.push(ring);
-    }
-    rings
-}
-
-fn make_triangle() -> [Vec3; 3] {
-    [
-        Vec3::new(-1.2, -0.8, 0.0),
-        Vec3::new(1.2, -0.8, 0.0),
-        Vec3::new(0.0, 1.3, 0.0),
-    ]
-}
-
-fn plot_z(chart: &mut ChartContext, zb: &mut ZBuffer, x: isize, y: isize, z: f64, col: Color) {
-    if x < 0 || y < 0 {
-        return;
-    }
-    let ux = x as usize;
-    let uy = y as usize;
-    if ux >= zb.w || uy >= zb.h {
-        return;
-    }
-    if zb.test_and_set(ux, uy, z) {
-        chart.canvas.set_pixel_screen(ux, uy, Some(col));
-    }
-}
-
-fn line_z(
-    chart: &mut ChartContext,
-    zb: &mut ZBuffer,
-    p1: (isize, isize, f64),
-    p2: (isize, isize, f64),
-    col: Color,
-) {
-    let dx = (p2.0 - p1.0).abs();
-    let dy = (p2.1 - p1.1).abs();
-    let steps = dx.max(dy).max(1) as i32;
-
-    for i in 0..=steps {
-        let t = (i as f64) / (steps as f64);
-        let xf = p1.0 as f64 + (p2.0 as f64 - p1.0 as f64) * t;
-        let yf = p1.1 as f64 + (p2.1 as f64 - p1.1 as f64) * t;
-        let zf = p1.2 + (p2.2 - p1.2) * t;
-        plot_z(chart, zb, xf.round() as isize, yf.round() as isize, zf, col);
-    }
-}
-
-fn main() -> std::io::Result<()> {
+fn main() -> io::Result<()> {
     terminal::enable_raw_mode()?;
-    let mut stdout = std::io::stdout();
+    let mut stdout = io::stdout();
     execute!(stdout, cursor::Hide, terminal::Clear(ClearType::All))?;
 
     // Geometry
