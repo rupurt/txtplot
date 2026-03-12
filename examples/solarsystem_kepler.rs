@@ -1,3 +1,5 @@
+mod support;
+
 use colored::Color;
 use crossterm::{
     cursor,
@@ -11,58 +13,14 @@ use crossterm::{
 use std::io::{self, Write};
 use std::thread; // <-- FIX: thread import was missing
 use std::time::{Duration, Instant};
+use support::three_d::{
+    make_sphere_points, project_with_projection, rotate_x, rotate_y, rotate_z, Projection, Vec3,
+};
 use txtplot::ChartContext;
 
 // ============================================================================
 // BASIC 3D MATH AND PHYSICS ENGINE
 // ============================================================================
-
-#[derive(Clone, Copy, Debug)]
-struct Vec3 {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-impl Vec3 {
-    fn new(x: f64, y: f64, z: f64) -> Self {
-        Self { x, y, z }
-    }
-    fn add(self, o: Vec3) -> Self {
-        Self::new(self.x + o.x, self.y + o.y, self.z + o.z)
-    }
-    fn sub(self, o: Vec3) -> Self {
-        Self::new(self.x - o.x, self.y - o.y, self.z - o.z)
-    }
-    fn dot(self, o: Vec3) -> f64 {
-        self.x * o.x + self.y * o.y + self.z * o.z
-    }
-    fn norm(self) -> f64 {
-        self.dot(self).sqrt()
-    }
-    fn normalize(self) -> Self {
-        let l = self.norm();
-        if l > 0.0 {
-            Self::new(self.x / l, self.y / l, self.z / l)
-        } else {
-            self
-        }
-    }
-}
-
-// Euler rotation functions (3D rotation matrix)
-// They rotate a point in space around the X, Y, or Z axes.
-fn rotate_x(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x, v.y * c - v.z * s, v.y * s + v.z * c)
-}
-fn rotate_y(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x * c - v.z * s, v.y, v.x * s + v.z * c)
-}
-fn rotate_z(v: Vec3, a: f64) -> Vec3 {
-    let (s, c) = a.sin_cos();
-    Vec3::new(v.x * c - v.y * s, v.x * s + v.y * c, v.z)
-}
 
 // ============================================================================
 // GRAPHICS ENGINE: Z-BUFFER AND ID-BUFFER
@@ -234,37 +192,6 @@ impl CelestialBody {
 // ============================================================================
 // HELPER FUNCTIONS - GEOMETRY GENERATION
 // ============================================================================
-
-/// Creates a point cloud forming a 3D sphere from latitude/longitude sampling.
-fn make_sphere_points(lat_steps: usize, lon_steps: usize) -> Vec<Vec3> {
-    let mut pts = Vec::with_capacity(lat_steps * lon_steps);
-    for i in 0..lat_steps {
-        let v = i as f64 / (lat_steps - 1).max(1) as f64;
-        let theta = v * std::f64::consts::PI;
-        let st = theta.sin();
-        let ct = theta.cos();
-        for j in 0..lon_steps {
-            let u = j as f64 / lon_steps as f64;
-            let phi = u * std::f64::consts::TAU;
-            pts.push(Vec3::new(st * phi.cos(), ct, st * phi.sin()));
-        }
-    }
-    pts
-}
-
-/// Projects a 3D coordinate (X, Y, Z) into a 2D screen pixel (X, Y) with perspective.
-fn project_to_screen(v_cam: Vec3, w: f64, h: f64, scale: f64) -> Option<(isize, isize, f64)> {
-    if v_cam.z <= 0.1 {
-        return None;
-    }
-    let px = (v_cam.x / v_cam.z) * 2.0;
-    let py = v_cam.y / v_cam.z;
-    Some((
-        (w / 2.0 + px * scale).round() as isize,
-        (h / 2.0 + py * scale).round() as isize,
-        v_cam.z,
-    ))
-}
 
 fn plot_z(
     chart: &mut ChartContext,
@@ -1023,6 +950,7 @@ fn main() -> io::Result<()> {
         let cw = chart_ref.canvas.pixel_width() as f64;
         let ch = chart_ref.canvas.pixel_height() as f64;
         let scale = (cw.min(ch) / 2.0) * zoom;
+        let projection = Projection::new(0.1, 0.5, 0.5, scale * 2.0, scale);
 
         // Absolute position calculation
         let mut abs_pos = vec![Vec3::new(0.0, 0.0, 0.0); bodies.len()];
@@ -1044,7 +972,7 @@ fn main() -> io::Result<()> {
             let mut v_cam = v_world.sub(camera_target_offset).sub(cam_pos);
             v_cam = rotate_y(v_cam, -cam_yaw);
             v_cam = rotate_x(v_cam, -cam_pitch);
-            project_to_screen(v_cam, cw, ch, scale)
+            project_with_projection(v_cam, cw, ch, projection)
         };
 
         // --- UNIVERSE RENDERING ---

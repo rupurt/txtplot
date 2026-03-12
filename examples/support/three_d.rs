@@ -22,6 +22,23 @@ impl Vec3 {
     pub fn sub(self, other: Vec3) -> Self {
         Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
+
+    pub fn dot(self, other: Vec3) -> f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    pub fn norm(self) -> f64 {
+        self.dot(self).sqrt()
+    }
+
+    pub fn normalize(self) -> Self {
+        let length = self.norm();
+        if length > 0.0 {
+            Self::new(self.x / length, self.y / length, self.z / length)
+        } else {
+            self
+        }
+    }
 }
 
 pub fn rotate_x(v: Vec3, angle: f64) -> Vec3 {
@@ -32,6 +49,11 @@ pub fn rotate_x(v: Vec3, angle: f64) -> Vec3 {
 pub fn rotate_y(v: Vec3, angle: f64) -> Vec3 {
     let (sin_a, cos_a) = angle.sin_cos();
     Vec3::new(v.x * cos_a - v.z * sin_a, v.y, v.x * sin_a + v.z * cos_a)
+}
+
+pub fn rotate_z(v: Vec3, angle: f64) -> Vec3 {
+    let (sin_a, cos_a) = angle.sin_cos();
+    Vec3::new(v.x * cos_a - v.y * sin_a, v.x * sin_a + v.y * cos_a, v.z)
 }
 
 pub struct ZBuffer {
