@@ -1,0 +1,24 @@
+name: No Warnings
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  no-warnings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Use stable Rust toolchain
+        run: rustup default stable
+
+      - name: Verify the repository builds without warnings
+        run: ./scripts/check-no-warnings.sh

@@ -1,0 +1,30 @@
+[package]
+name = "txtplot"
+version = "0.1.0"
+edition = "2021" 
+description = "A high-performance terminal plotting library using Unicode Braille characters. Supports real-time rendering, 3D projections, and complex charts."
+license = "MIT"
+repository = "https://github.com/rupurt/txtplot"
+readme = "README.md"
+keywords = ["plotting", "tui", "graph", "visualization", "braille"]
+categories = ["command-line-interface", "visualization", "graphics"]
+exclude = [
+    ".github/*",
+    "images/*",
+]
+
+[dependencies]
+rand = "0.8"
+colored = "2.0"
+crossterm = "0.27" 
+terminal_size = "0.3"
+
+
+[dev-dependencies]
+rand = "0.8"
+sysinfo = "0.30"
+criterion = "0.5"
+
+[[bench]]
+name = "canvas_benchmark"
+harness = false
