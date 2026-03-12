@@ -31,6 +31,7 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
 - Advanced pixel and color control:
   - `unset_pixel` and `toggle_pixel`
   - color blending modes with `Overwrite` and `KeepFirst`
+  - cell background colors for terminal panels and HUD-style layouts
 - Drawing primitives:
   - lines, circles, polygons
   - filled shapes via `rect_filled` and `circle_filled`

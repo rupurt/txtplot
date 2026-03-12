@@ -25,6 +25,68 @@ impl<R: CellRenderer> CellCanvas<R> {
         }
     }
 
+    fn write_ansi_background_color<W: Write>(w: &mut W, color: Color) -> fmt::Result {
+        match color {
+            Color::Black => w.write_str("\x1b[40m"),
+            Color::Red => w.write_str("\x1b[41m"),
+            Color::Green => w.write_str("\x1b[42m"),
+            Color::Yellow => w.write_str("\x1b[43m"),
+            Color::Blue => w.write_str("\x1b[44m"),
+            Color::Magenta => w.write_str("\x1b[45m"),
+            Color::Cyan => w.write_str("\x1b[46m"),
+            Color::White => w.write_str("\x1b[47m"),
+            Color::BrightBlack => w.write_str("\x1b[100m"),
+            Color::BrightRed => w.write_str("\x1b[101m"),
+            Color::BrightGreen => w.write_str("\x1b[102m"),
+            Color::BrightYellow => w.write_str("\x1b[103m"),
+            Color::BrightBlue => w.write_str("\x1b[104m"),
+            Color::BrightMagenta => w.write_str("\x1b[105m"),
+            Color::BrightCyan => w.write_str("\x1b[106m"),
+            Color::BrightWhite => w.write_str("\x1b[107m"),
+            Color::TrueColor { r, g, b } => write!(w, "\x1b[48;2;{};{};{}m", r, g, b),
+        }
+    }
+
+    fn write_style<W: Write>(
+        w: &mut W,
+        foreground: Option<Color>,
+        background: Option<Color>,
+        last_foreground: &mut Option<Color>,
+        last_background: &mut Option<Color>,
+    ) -> fmt::Result {
+        if foreground == *last_foreground && background == *last_background {
+            return Ok(());
+        }
+
+        let needs_reset = (foreground.is_none() && last_foreground.is_some())
+            || (background.is_none() && last_background.is_some());
+
+        if needs_reset {
+            w.write_str("\x1b[0m")?;
+            if let Some(bg) = background {
+                Self::write_ansi_background_color(w, bg)?;
+            }
+            if let Some(fg) = foreground {
+                Self::write_ansi_color(w, fg)?;
+            }
+        } else {
+            if background != *last_background {
+                if let Some(bg) = background {
+                    Self::write_ansi_background_color(w, bg)?;
+                }
+            }
+            if foreground != *last_foreground {
+                if let Some(fg) = foreground {
+                    Self::write_ansi_color(w, fg)?;
+                }
+            }
+        }
+
+        *last_foreground = foreground;
+        *last_background = background;
+        Ok(())
+    }
+
     pub fn render_to<W: Write>(
         &self,
         w: &mut W,
@@ -44,7 +106,8 @@ impl<R: CellRenderer> CellCanvas<R> {
             w.write_char('\n')?;
         }
 
-        let mut last_color: Option<Color> = None;
+        let mut last_foreground: Option<Color> = None;
+        let mut last_background: Option<Color> = None;
 
         for row in 0..self.height {
             if show_border {
@@ -53,27 +116,28 @@ impl<R: CellRenderer> CellCanvas<R> {
 
             for col in 0..self.width {
                 let idx = self.idx(col, row);
-                let char_to_print = if let Some(c) = self.text_layer[idx] {
-                    c
-                } else {
-                    R::glyph(self.buffer[idx])
-                };
+                let appearance = R::appearance(
+                    self.buffer[idx],
+                    self.colors[idx],
+                    self.background_colors[idx],
+                    self.text_layer[idx],
+                );
 
-                let current_color = self.colors[idx];
-                if current_color != last_color {
-                    match current_color {
-                        Some(c) => Self::write_ansi_color(w, c)?,
-                        None => w.write_str("\x1b[0m")?,
-                    }
-                    last_color = current_color;
-                }
+                Self::write_style(
+                    w,
+                    appearance.foreground,
+                    appearance.background,
+                    &mut last_foreground,
+                    &mut last_background,
+                )?;
 
-                w.write_char(char_to_print)?;
+                w.write_char(appearance.glyph)?;
             }
 
-            if last_color.is_some() {
+            if last_foreground.is_some() || last_background.is_some() {
                 w.write_str("\x1b[0m")?;
-                last_color = None;
+                last_foreground = None;
+                last_background = None;
             }
 
             if show_border {

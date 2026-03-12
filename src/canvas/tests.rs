@@ -67,3 +67,25 @@ fn quadrant_canvas_renders_quadrant_blocks() {
     canvas.set_pixel_screen(0, 1, None);
     assert_eq!(canvas.render_no_color(), "█\n");
 }
+
+#[test]
+fn render_with_background_color_emits_ansi_background() {
+    let mut canvas = BrailleCanvas::new(1, 1);
+    canvas.set_char(0, 0, 'A', None);
+    canvas.set_cell_background(0, 0, Some(Color::Blue));
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[44m"));
+    assert!(rendered.contains("A"));
+}
+
+#[test]
+fn background_only_cells_render_as_spaces_with_background() {
+    let mut canvas = BrailleCanvas::new(1, 1);
+    canvas.set_cell_background(0, 0, Some(Color::BrightBlack));
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[100m "));
+}

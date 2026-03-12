@@ -11,6 +11,7 @@ mod tests;
 use colored::Color;
 use std::marker::PhantomData;
 
+pub use renderer::CellAppearance;
 pub use renderer::{BrailleRenderer, CellRenderer, QuadrantRenderer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,7 @@ pub struct CellCanvas<R: CellRenderer> {
     plot_bottom_inset_px: usize,
     buffer: Vec<R::Cell>,
     colors: Vec<Option<Color>>,
+    background_colors: Vec<Option<Color>>,
     text_layer: Vec<Option<char>>,
     _renderer: PhantomData<R>,
 }
@@ -80,5 +82,14 @@ impl<R: CellRenderer> CellCanvas<R> {
         if R::is_empty(self.buffer[index]) {
             self.colors[index] = None;
         }
+    }
+
+    fn set_cell_background_impl(&mut self, col: usize, row: usize, color: Option<Color>) {
+        if col >= self.width || row >= self.height {
+            return;
+        }
+
+        let index = self.idx(col, row);
+        self.background_colors[index] = color;
     }
 }

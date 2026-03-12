@@ -130,7 +130,7 @@ Typical flow:
 1. Create a canvas once
 2. Clear and redraw each frame
 3. Use screen coordinates for sprites, UI chrome, and projected geometry
-4. Overlay text with `set_char()`
+4. Overlay text with `set_char()` and use `set_cell_background()` for panel-style cells
 5. Render into a reusable `String` with `render_to()`
 
 Good fits for direct-canvas work:

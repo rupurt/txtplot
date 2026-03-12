@@ -41,6 +41,7 @@ The public API is intentionally split into two layers:
 
 - Stores one byte mask per terminal cell for Braille dots
 - Stores optional foreground colors per cell
+- Stores optional background colors per cell
 - Stores an optional text overlay layer per cell
 - Tracks plot insets in pixel coordinates
 - Owns composition helpers such as overlay and merge behavior
@@ -84,11 +85,12 @@ The important boundary is between data-space and pixel-space:
 
 ## Composition Model
 
-The current composition model uses three parallel concerns at the cell level:
+The current composition model uses four parallel concerns at the cell level:
 
 1. Braille mask bits for dot occupancy
 2. Optional foreground color
-3. Optional text overlay
+3. Optional background color
+4. Optional text overlay
 
 This enables:
 

@@ -1,3 +1,12 @@
+use colored::Color;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellAppearance {
+    pub glyph: char,
+    pub foreground: Option<Color>,
+    pub background: Option<Color>,
+}
+
 pub trait CellRenderer {
     type Cell: Copy + Default + PartialEq + Eq;
 
@@ -14,6 +23,27 @@ pub trait CellRenderer {
     fn subpixel_count(cell: Self::Cell) -> u32;
     fn is_empty(cell: Self::Cell) -> bool;
     fn glyph(cell: Self::Cell) -> char;
+
+    fn appearance(
+        cell: Self::Cell,
+        foreground: Option<Color>,
+        background: Option<Color>,
+        text: Option<char>,
+    ) -> CellAppearance {
+        let glyph = text.unwrap_or_else(|| {
+            if background.is_some() && Self::is_empty(cell) {
+                ' '
+            } else {
+                Self::glyph(cell)
+            }
+        });
+
+        CellAppearance {
+            glyph,
+            foreground,
+            background,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default)]
