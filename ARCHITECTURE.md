@@ -8,13 +8,15 @@ This is the implementation contract for module ownership, data flow, and extensi
 
 ## Source Layout
 
-The repository is intentionally compact today.
+The repository is intentionally compact, but the core modules are now split into focused internal files.
 
 | Path | Responsibility |
 |------|----------------|
 | `src/lib.rs` | Crate-root wiring and public facade |
-| `src/canvas.rs` | Braille cell buffers, text/color overlays, clipping, rendering |
-| `src/charts.rs` | Axis scaling, range normalization, chart primitives, labeling |
+| `src/canvas/mod.rs` | `BrailleCanvas`, `ColorBlend`, and shared low-level buffer helpers |
+| `src/canvas/*.rs` | Canvas composition, pixel operations, clipping, primitives, rendering, tests |
+| `src/charts/mod.rs` | `ChartContext`, `AxisScale`, and shared plot geometry helpers |
+| `src/charts/*.rs` | Range helpers, overlays, axes, chart series, tests |
 | `src/prelude.rs` | Convenient downstream re-exports |
 | `examples/` | End-to-end examples and visual demos |
 | `benches/` | Performance benchmarks |
@@ -123,7 +125,7 @@ Boundary rule:
 
 - Any new public type should be reviewed through `src/lib.rs`, `src/prelude.rs`, and `README.md`.
 - Any new rendering strategy should be evaluated against existing buffer, overlay, and clipping assumptions.
-- If the crate grows beyond the current single-file module layout, update this document and keep the boundary between raster and chart logic explicit.
+- If the crate grows beyond the current core module layout, update this document and keep the boundary between raster and chart logic explicit.
 
 ## Performance Contracts
 
@@ -138,7 +140,7 @@ Performance is a first-order design constraint.
 
 Use these rules when deciding where code belongs:
 
-- If it operates on pixels, masks, colors, or text cells, it belongs in `src/canvas.rs`.
-- If it operates on `f64` data, ranges, scales, ticks, or chart presentation, it belongs in `src/charts.rs`.
+- If it operates on pixels, masks, colors, or text cells, it belongs somewhere under `src/canvas/`.
+- If it operates on `f64` data, ranges, scales, ticks, or chart presentation, it belongs somewhere under `src/charts/`.
 - If it only improves import ergonomics, it belongs in `src/prelude.rs`.
 - If it changes the user-visible crate contract, it must be reflected in `src/lib.rs` and documented.

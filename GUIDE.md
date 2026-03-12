@@ -34,7 +34,7 @@ just test
 
 Use this path when the change is fundamentally pixel-oriented.
 
-1. Implement the primitive in `src/canvas.rs`
+1. Implement the primitive in the appropriate file under `src/canvas/`
 2. Reuse existing mask, color, clipping, and coordinate helpers
 3. Expose a public method only if downstream users need it directly
 4. Add or update an example when the new primitive is easier to understand visually
@@ -49,7 +49,7 @@ Use this for things like:
 
 Use this path when the change is data-oriented.
 
-1. Implement the helper in `src/charts.rs`
+1. Implement the helper in the appropriate file under `src/charts/`
 2. Reuse the existing scale, range, and mapping helpers
 3. Keep tick generation and axis semantics centralized
 4. Prefer composing through `ChartContext` instead of reaching into canvas internals from callers
