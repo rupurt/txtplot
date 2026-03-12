@@ -3,11 +3,15 @@ mod composition;
 mod pixels;
 mod primitives;
 mod render;
+mod renderer;
 
 #[cfg(test)]
 mod tests;
 
 use colored::Color;
+use std::marker::PhantomData;
+
+pub use renderer::{BrailleRenderer, CellRenderer, QuadrantRenderer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ColorBlend {
@@ -17,36 +21,25 @@ pub enum ColorBlend {
     KeepFirst,
 }
 
-pub struct BrailleCanvas {
+pub struct CellCanvas<R: CellRenderer> {
     pub width: usize,
     pub height: usize,
     pub blend_mode: ColorBlend,
     plot_left_inset_px: usize,
     plot_bottom_inset_px: usize,
-    buffer: Vec<u8>,
+    buffer: Vec<R::Cell>,
     colors: Vec<Option<Color>>,
     text_layer: Vec<Option<char>>,
+    _renderer: PhantomData<R>,
 }
 
-impl BrailleCanvas {
+pub type BrailleCanvas = CellCanvas<BrailleRenderer>;
+pub type QuadrantCanvas = CellCanvas<QuadrantRenderer>;
+
+impl<R: CellRenderer> CellCanvas<R> {
     #[inline]
     fn idx(&self, col: usize, row: usize) -> usize {
         row * self.width + col
-    }
-
-    #[inline]
-    fn get_mask(sub_x: usize, sub_y: usize) -> u8 {
-        match (sub_x, sub_y) {
-            (0, 0) => 0x01,
-            (1, 0) => 0x08,
-            (0, 1) => 0x02,
-            (1, 1) => 0x10,
-            (0, 2) => 0x04,
-            (1, 2) => 0x20,
-            (0, 3) => 0x40,
-            (1, 3) => 0x80,
-            _ => 0,
-        }
     }
 
     fn set_pixel_impl(&mut self, px: usize, py: usize, color: Option<Color>) {
@@ -54,8 +47,12 @@ impl BrailleCanvas {
             return;
         }
 
-        let index = self.idx(px / 2, py / 4);
-        self.buffer[index] |= Self::get_mask(px % 2, py % 4);
+        let index = self.idx(px / R::CELL_WIDTH, py / R::CELL_HEIGHT);
+        R::set_subpixel(
+            &mut self.buffer[index],
+            px % R::CELL_WIDTH,
+            py % R::CELL_HEIGHT,
+        );
 
         if let Some(c) = color {
             match self.blend_mode {
@@ -74,9 +71,13 @@ impl BrailleCanvas {
             return;
         }
 
-        let index = self.idx(px / 2, py / 4);
-        self.buffer[index] &= !Self::get_mask(px % 2, py % 4);
-        if self.buffer[index] == 0 {
+        let index = self.idx(px / R::CELL_WIDTH, py / R::CELL_HEIGHT);
+        R::unset_subpixel(
+            &mut self.buffer[index],
+            px % R::CELL_WIDTH,
+            py % R::CELL_HEIGHT,
+        );
+        if R::is_empty(self.buffer[index]) {
             self.colors[index] = None;
         }
     }

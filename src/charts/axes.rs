@@ -1,7 +1,8 @@
-use super::ChartContext;
+use super::CellChartContext;
+use crate::canvas::CellRenderer;
 use colored::Color;
 
-impl ChartContext {
+impl<R: CellRenderer> CellChartContext<R> {
     pub fn text(&mut self, text: &str, x_norm: f64, y_norm: f64, color: Option<Color>) {
         let w = self.canvas.width;
         let h = self.canvas.height;

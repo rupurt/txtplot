@@ -1,7 +1,7 @@
-use super::BrailleCanvas;
+use super::{CellCanvas, CellRenderer};
 use colored::Color;
 
-impl BrailleCanvas {
+impl<R: CellRenderer> CellCanvas<R> {
     fn compute_outcode(&self, x: isize, y: isize) -> u8 {
         let mut code = 0;
         let w = self.pixel_width() as isize;

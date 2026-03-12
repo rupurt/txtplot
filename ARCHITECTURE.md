@@ -144,3 +144,42 @@ Use these rules when deciding where code belongs:
 - If it operates on `f64` data, ranges, scales, ticks, or chart presentation, it belongs somewhere under `src/charts/`.
 - If it only improves import ergonomics, it belongs in `src/prelude.rs`.
 - If it changes the user-visible crate contract, it must be reflected in `src/lib.rs` and documented.
+
+## Pluggable Cell Renderers Checklist
+
+This is the planned implementation path for renderer-pluggable terminal cells such as Braille, Quadrants, and HalfBlocks.
+
+### Design Constraints
+
+- Keep Braille as the default renderer and benchmark baseline.
+- Use static dispatch in the hot path: prefer `CellCanvas<R>` over trait objects inside per-pixel loops.
+- Treat renderer choice as a cell encoding concern, not a charting concern.
+- Do not market every renderer as "higher resolution". Braille remains the densest built-in layout at `2x4` sub-pixels per cell.
+- Assume HalfBlocks will require a richer color model than the current single-foreground-color-per-cell design.
+
+### Implementation Checklist
+
+- [ ] Introduce a `CellRenderer` trait that defines cell geometry and encoding hooks.
+  It should own things like `CELL_WIDTH`, `CELL_HEIGHT`, sub-pixel set/unset behavior, and cell-to-terminal output.
+- [ ] Refactor the raster core into a generic `CellCanvas<R: CellRenderer>`.
+  Move Braille-specific mask math and glyph emission out of the core canvas and into a dedicated renderer implementation.
+- [ ] Preserve the current public default with compatibility aliases or wrappers.
+  `BrailleCanvas` should remain the ergonomic default even if it becomes `type BrailleCanvas = CellCanvas<BrailleRenderer>`.
+- [ ] Generalize `ChartContext` over the renderer type.
+  Plotting code should work with alternate cell renderers without duplicating axis, range, or series logic.
+- [ ] Implement `QuadrantRenderer` first.
+  It is the lowest-risk validation step because it fits the current cell-color model more closely than HalfBlocks.
+- [ ] Extend cell state for `HalfBlockRenderer`.
+  This likely means foreground/background color support or another richer per-cell reduction model instead of the current single optional foreground color.
+- [ ] Keep runtime renderer selection above the hot path.
+  If runtime switching is added, choose the renderer at construction boundaries rather than paying dynamic-dispatch cost for every pixel write.
+- [ ] Add renderer-specific tests, benchmarks, examples, and docs.
+  Include pixel-dimension tests, render goldens, compatibility coverage for existing APIs, and performance comparisons against Braille.
+
+### Suggested Rollout Order
+
+1. Add `CellRenderer` and `CellCanvas<R>` with Braille only and no behavior change.
+2. Genericize `ChartContext` while keeping Braille as the default type parameter.
+3. Add `QuadrantRenderer` and validate the design.
+4. Rework cell color/state as needed for `HalfBlockRenderer`.
+5. Add runtime selection helpers, examples, benchmarks, and migration docs.

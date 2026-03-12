@@ -119,6 +119,14 @@ fn main() -> fmt::Result {
 }
 ```
 
+### Renderer Showcase
+
+Braille remains the default renderer, and the new quadrant renderer is available through `QuadrantCanvas` and `QuadrantChartContext`. The showcase example renders the same chart and raster scene through both encodings:
+
+```bash
+cargo run --release --example renderer_showcase
+```
+
 ### 3D Surface Example
 
 `txtplot` does not ship a high-level 3D scene API, but the screen-space pixel primitives are enough to build one. The new surface example projects a volatility mesh into terminal pixels, uses a tiny z-buffer for occlusion, and overlays a gradient-ascent path:
@@ -195,25 +203,31 @@ cargo run --release --example primitives_demo
 cargo run --release --example vol_surface
 ```
 
-4. t-SNE embedding with nearest-neighbor graph
+4. Braille vs quadrant renderer showcase
+
+```bash
+cargo run --release --example renderer_showcase
+```
+
+5. t-SNE embedding with nearest-neighbor graph
 
 ```bash
 cargo run --release --example tsne_neighbors
 ```
 
-5. 3D gallery with camera, z-buffer, and zoom
+6. 3D gallery with camera, z-buffer, and zoom
 
 ```bash
 cargo run --release --example 3dengine
 ```
 
-6. Solar system Kepler 3D
+7. Solar system Kepler 3D
 
 ```bash
 cargo run --release --example solarsystem_kepler
 ```
 
-7. Sprite engine
+8. Sprite engine
 
 ```bash
 cargo run --release --example sprite_demo

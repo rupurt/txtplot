@@ -1,6 +1,7 @@
-use super::{BrailleCanvas, ColorBlend};
+use super::{CellCanvas, CellRenderer, ColorBlend};
+use std::marker::PhantomData;
 
-impl BrailleCanvas {
+impl<R: CellRenderer> CellCanvas<R> {
     pub fn new(width: usize, height: usize) -> Self {
         let size = width * height;
         Self {
@@ -9,24 +10,25 @@ impl BrailleCanvas {
             blend_mode: ColorBlend::Overwrite,
             plot_left_inset_px: 0,
             plot_bottom_inset_px: 0,
-            buffer: vec![0u8; size],
+            buffer: vec![R::Cell::default(); size],
             colors: vec![None; size],
             text_layer: vec![None; size],
+            _renderer: PhantomData,
         }
     }
 
     #[inline]
     pub fn pixel_width(&self) -> usize {
-        self.width * 2
+        self.width * R::CELL_WIDTH
     }
 
     #[inline]
     pub fn pixel_height(&self) -> usize {
-        self.height * 4
+        self.height * R::CELL_HEIGHT
     }
 
     pub fn clear(&mut self) {
-        self.buffer.fill(0);
+        self.buffer.fill(R::Cell::default());
         self.colors.fill(None);
         self.text_layer.fill(None);
         self.plot_left_inset_px = 0;
@@ -42,18 +44,18 @@ impl BrailleCanvas {
         (self.plot_left_inset_px, self.plot_bottom_inset_px)
     }
 
-    pub(crate) fn cell_masks(&self) -> &[u8] {
+    pub(crate) fn cell_masks(&self) -> &[R::Cell] {
         &self.buffer
     }
 
     /// Replaces entire cells whenever `top` has content. This allows
     /// curves to sit above a grid without mixing both glyphs.
-    pub fn overlay(&mut self, top: &BrailleCanvas) {
+    pub fn overlay(&mut self, top: &Self) {
         assert_eq!(self.width, top.width, "canvas width mismatch");
         assert_eq!(self.height, top.height, "canvas height mismatch");
 
         for idx in 0..self.buffer.len() {
-            if top.buffer[idx] != 0 || top.text_layer[idx].is_some() {
+            if !R::is_empty(top.buffer[idx]) || top.text_layer[idx].is_some() {
                 self.buffer[idx] = top.buffer[idx];
                 self.colors[idx] = top.colors[idx];
                 self.text_layer[idx] = top.text_layer[idx];
@@ -61,13 +63,13 @@ impl BrailleCanvas {
         }
     }
 
-    pub(crate) fn merge(&mut self, top: &BrailleCanvas) {
+    pub(crate) fn merge(&mut self, top: &Self) {
         assert_eq!(self.width, top.width, "canvas width mismatch");
         assert_eq!(self.height, top.height, "canvas height mismatch");
 
         for idx in 0..self.buffer.len() {
-            if top.buffer[idx] != 0 {
-                self.buffer[idx] |= top.buffer[idx];
+            if !R::is_empty(top.buffer[idx]) {
+                R::merge_cell(&mut self.buffer[idx], top.buffer[idx]);
                 if top.colors[idx].is_some() {
                     self.colors[idx] = top.colors[idx];
                 }
@@ -82,11 +84,7 @@ impl BrailleCanvas {
         }
     }
 
-    pub(crate) fn overlay_without_background(
-        &mut self,
-        top: &BrailleCanvas,
-        background_mask: &[u8],
-    ) {
+    pub(crate) fn overlay_without_background(&mut self, top: &Self, background_mask: &[R::Cell]) {
         assert_eq!(self.width, top.width, "canvas width mismatch");
         assert_eq!(self.height, top.height, "canvas height mismatch");
         assert_eq!(
@@ -101,28 +99,28 @@ impl BrailleCanvas {
             .enumerate()
             .take(self.buffer.len())
         {
-            if top.buffer[idx] == 0 && top.text_layer[idx].is_none() {
+            if R::is_empty(top.buffer[idx]) && top.text_layer[idx].is_none() {
                 continue;
             }
 
             let preserved_color = self.colors[idx];
-            let existing_foreground = self.buffer[idx] & !background;
+            let existing_foreground = R::without_mask(self.buffer[idx], background);
 
-            self.buffer[idx] &= !background;
-            self.buffer[idx] |= top.buffer[idx];
+            R::subtract_mask(&mut self.buffer[idx], background);
+            R::merge_cell(&mut self.buffer[idx], top.buffer[idx]);
 
             if let Some(ch) = top.text_layer[idx] {
                 self.text_layer[idx] = Some(ch);
             }
 
             let keep_existing_color = top.text_layer[idx].is_none()
-                && existing_foreground != 0
+                && !R::is_empty(existing_foreground)
                 && preserved_color.is_some()
-                && existing_foreground.count_ones() >= top.buffer[idx].count_ones();
+                && R::subpixel_count(existing_foreground) >= R::subpixel_count(top.buffer[idx]);
 
             if keep_existing_color {
                 self.colors[idx] = preserved_color;
-            } else if top.colors[idx].is_some() || self.buffer[idx] == 0 {
+            } else if top.colors[idx].is_some() || R::is_empty(self.buffer[idx]) {
                 self.colors[idx] = top.colors[idx];
             }
         }

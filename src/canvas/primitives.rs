@@ -1,7 +1,7 @@
-use super::BrailleCanvas;
+use super::{CellCanvas, CellRenderer};
 use colored::Color;
 
-impl BrailleCanvas {
+impl<R: CellRenderer> CellCanvas<R> {
     pub fn rect(&mut self, x: isize, y: isize, w: usize, h: usize, color: Option<Color>) {
         let x1 = x + w as isize - 1;
         let y1 = y + h as isize - 1;

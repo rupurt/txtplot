@@ -1,8 +1,9 @@
-use super::{AxisScale, ChartContext, PlotGeometry, PlotScales};
+use super::{AxisScale, CellChartContext, PlotGeometry, PlotScales};
+use crate::canvas::CellRenderer;
 use colored::Color;
 use std::f64::consts::PI;
 
-fn map_coords_for_size(
+fn map_coords_for_size<R: CellRenderer>(
     geometry: PlotGeometry,
     scales: PlotScales,
     point: (f64, f64),
@@ -11,8 +12,8 @@ fn map_coords_for_size(
 ) -> Option<(isize, isize)> {
     let x = scales.x.transform(point.0)?;
     let y = scales.y.transform(point.1)?;
-    let (min_x, max_x) = ChartContext::transformed_range(scales.x, x_range)?;
-    let (min_y, max_y) = ChartContext::transformed_range(scales.y, y_range)?;
+    let (min_x, max_x) = CellChartContext::<R>::transformed_range(scales.x, x_range)?;
+    let (min_y, max_y) = CellChartContext::<R>::transformed_range(scales.y, y_range)?;
     let range_x = (max_x - min_x).max(1e-9);
     let range_y = (max_y - min_y).max(1e-9);
     let drawable_width =
@@ -28,7 +29,7 @@ fn map_coords_for_size(
     Some((px as isize, py as isize))
 }
 
-impl ChartContext {
+impl<R: CellRenderer> CellChartContext<R> {
     fn line_chart_with_ranges(
         &mut self,
         points: &[(f64, f64)],
@@ -44,11 +45,13 @@ impl ChartContext {
                 let (x0, y0) = window[0];
                 let (x1, y1) = window[1];
 
-                let Some(p0) = map_coords_for_size(geometry, scales, (x0, y0), x_range, y_range)
+                let Some(p0) =
+                    map_coords_for_size::<R>(geometry, scales, (x0, y0), x_range, y_range)
                 else {
                     continue;
                 };
-                let Some(p1) = map_coords_for_size(geometry, scales, (x1, y1), x_range, y_range)
+                let Some(p1) =
+                    map_coords_for_size::<R>(geometry, scales, (x1, y1), x_range, y_range)
                 else {
                     continue;
                 };
@@ -70,7 +73,7 @@ impl ChartContext {
         self.draw_foreground_overlay(|overlay| {
             for &(x, y) in points {
                 let Some((px, py)) =
-                    map_coords_for_size(geometry, scales, (x, y), x_range, y_range)
+                    map_coords_for_size::<R>(geometry, scales, (x, y), x_range, y_range)
                 else {
                     continue;
                 };
@@ -206,11 +209,13 @@ impl ChartContext {
             for i in 0..vertices.len() {
                 let (x0, y0) = vertices[i];
                 let (x1, y1) = vertices[(i + 1) % vertices.len()];
-                let Some(p0) = map_coords_for_size(geometry, scales, (x0, y0), x_range, y_range)
+                let Some(p0) =
+                    map_coords_for_size::<R>(geometry, scales, (x0, y0), x_range, y_range)
                 else {
                     continue;
                 };
-                let Some(p1) = map_coords_for_size(geometry, scales, (x1, y1), x_range, y_range)
+                let Some(p1) =
+                    map_coords_for_size::<R>(geometry, scales, (x1, y1), x_range, y_range)
                 else {
                     continue;
                 };

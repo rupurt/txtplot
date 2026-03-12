@@ -1,8 +1,8 @@
-use super::BrailleCanvas;
+use super::{CellCanvas, CellRenderer};
 use colored::Color;
 use std::fmt::{self, Write};
 
-impl BrailleCanvas {
+impl<R: CellRenderer> CellCanvas<R> {
     fn write_ansi_color<W: Write>(w: &mut W, color: Color) -> fmt::Result {
         match color {
             Color::Black => w.write_str("\x1b[30m"),
@@ -56,8 +56,7 @@ impl BrailleCanvas {
                 let char_to_print = if let Some(c) = self.text_layer[idx] {
                     c
                 } else {
-                    let mask = self.buffer[idx];
-                    std::char::from_u32(0x2800 + mask as u32).unwrap_or(' ')
+                    R::glyph(self.buffer[idx])
                 };
 
                 let current_color = self.colors[idx];
@@ -108,8 +107,7 @@ impl BrailleCanvas {
         let mut out = String::with_capacity(self.width * self.height + self.height);
         for row in 0..self.height {
             for col in 0..self.width {
-                let mask = self.buffer[self.idx(col, row)];
-                out.push(std::char::from_u32(0x2800 + mask as u32).unwrap_or(' '));
+                out.push(R::glyph(self.buffer[self.idx(col, row)]));
             }
             out.push('\n');
         }

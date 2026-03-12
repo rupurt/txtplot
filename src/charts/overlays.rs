@@ -1,12 +1,12 @@
-use super::ChartContext;
-use crate::canvas::BrailleCanvas;
+use super::CellChartContext;
+use crate::canvas::{CellCanvas, CellRenderer};
 
-impl ChartContext {
+impl<R: CellRenderer> CellChartContext<R> {
     pub(super) fn draw_foreground_overlay<F>(&mut self, draw: F)
     where
-        F: FnOnce(&mut BrailleCanvas),
+        F: FnOnce(&mut CellCanvas<R>),
     {
-        let mut overlay = BrailleCanvas::new(self.canvas.width, self.canvas.height);
+        let mut overlay = CellCanvas::<R>::new(self.canvas.width, self.canvas.height);
         overlay.blend_mode = self.canvas.blend_mode;
         draw(&mut overlay);
         self.canvas
@@ -15,14 +15,14 @@ impl ChartContext {
 
     pub(super) fn draw_background_overlay<F>(&mut self, draw: F)
     where
-        F: FnOnce(&mut BrailleCanvas),
+        F: FnOnce(&mut CellCanvas<R>),
     {
-        let mut overlay = BrailleCanvas::new(self.canvas.width, self.canvas.height);
+        let mut overlay = CellCanvas::<R>::new(self.canvas.width, self.canvas.height);
         overlay.blend_mode = self.canvas.blend_mode;
         draw(&mut overlay);
         self.canvas.merge(&overlay);
         for (mask, cell) in self.background_mask.iter_mut().zip(overlay.cell_masks()) {
-            *mask |= *cell;
+            R::merge_cell(mask, *cell);
         }
     }
 }

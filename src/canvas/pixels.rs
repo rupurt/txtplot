@@ -1,7 +1,7 @@
-use super::BrailleCanvas;
+use super::{CellCanvas, CellRenderer};
 use colored::Color;
 
-impl BrailleCanvas {
+impl<R: CellRenderer> CellCanvas<R> {
     pub fn set_pixel(&mut self, x: usize, y: usize, color: Option<Color>) {
         let inverted_y = self.pixel_height().saturating_sub(1).saturating_sub(y);
         self.set_pixel_impl(x, inverted_y, color);
@@ -25,10 +25,8 @@ impl BrailleCanvas {
             return;
         }
 
-        let index = self.idx(x / 2, y / 4);
-        let mask = Self::get_mask(x % 2, y % 4);
-
-        if (self.buffer[index] & mask) != 0 {
+        let index = self.idx(x / R::CELL_WIDTH, y / R::CELL_HEIGHT);
+        if R::is_subpixel_set(self.buffer[index], x % R::CELL_WIDTH, y % R::CELL_HEIGHT) {
             self.unset_pixel_impl(x, y);
         } else {
             self.set_pixel_impl(x, y, color);

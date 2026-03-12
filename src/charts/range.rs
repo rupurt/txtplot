@@ -1,6 +1,7 @@
-use super::{AxisScale, ChartContext};
+use super::{AxisScale, CellChartContext};
+use crate::canvas::CellRenderer;
 
-impl ChartContext {
+impl<R: CellRenderer> CellChartContext<R> {
     pub fn get_auto_range(points: &[(f64, f64)], padding: f64) -> ((f64, f64), (f64, f64)) {
         Self::get_auto_range_scaled(points, padding, AxisScale::Linear, AxisScale::Linear)
     }

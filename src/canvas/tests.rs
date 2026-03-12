@@ -1,4 +1,4 @@
-use super::BrailleCanvas;
+use super::{BrailleCanvas, QuadrantCanvas};
 use colored::Color;
 
 #[test]
@@ -47,4 +47,23 @@ fn overlay_without_background_keeps_first_foreground_color() {
 
     assert_eq!(canvas.colors[0], Some(Color::Green));
     assert_eq!(canvas.render_no_color(), "⣿\n");
+}
+
+#[test]
+fn quadrant_canvas_uses_renderer_dimensions() {
+    let canvas = QuadrantCanvas::new(3, 2);
+    assert_eq!(canvas.pixel_width(), 6);
+    assert_eq!(canvas.pixel_height(), 4);
+}
+
+#[test]
+fn quadrant_canvas_renders_quadrant_blocks() {
+    let mut canvas = QuadrantCanvas::new(1, 1);
+    canvas.set_pixel_screen(0, 0, None);
+    canvas.set_pixel_screen(1, 1, None);
+    assert_eq!(canvas.render_no_color(), "▚\n");
+
+    canvas.set_pixel_screen(1, 0, None);
+    canvas.set_pixel_screen(0, 1, None);
+    assert_eq!(canvas.render_no_color(), "█\n");
 }

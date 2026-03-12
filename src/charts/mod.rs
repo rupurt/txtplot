@@ -6,7 +6,7 @@ mod series;
 #[cfg(test)]
 mod tests;
 
-use crate::canvas::BrailleCanvas;
+use crate::canvas::{BrailleRenderer, CellCanvas, CellRenderer, QuadrantRenderer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AxisScale {
@@ -35,12 +35,16 @@ impl AxisScale {
     }
 }
 
-pub struct ChartContext {
-    pub canvas: BrailleCanvas,
-    background_mask: Vec<u8>,
+pub struct CellChartContext<R: CellRenderer> {
+    pub canvas: CellCanvas<R>,
+    background_mask: Vec<R::Cell>,
     x_scale: AxisScale,
     y_scale: AxisScale,
 }
+
+pub type BrailleChartContext = CellChartContext<BrailleRenderer>;
+pub type ChartContext = CellChartContext<BrailleRenderer>;
+pub type QuadrantChartContext = CellChartContext<QuadrantRenderer>;
 
 #[derive(Clone, Copy)]
 struct PlotGeometry {
@@ -51,7 +55,7 @@ struct PlotGeometry {
 }
 
 impl PlotGeometry {
-    fn from_canvas(canvas: &BrailleCanvas) -> Self {
+    fn from_canvas<R: CellRenderer>(canvas: &CellCanvas<R>) -> Self {
         let (left_inset_px, bottom_inset_px) = canvas.plot_insets();
         Self {
             width_px: canvas.pixel_width(),
@@ -68,12 +72,23 @@ struct PlotScales {
     y: AxisScale,
 }
 
-impl ChartContext {
+impl CellChartContext<BrailleRenderer> {
     pub fn new(width: usize, height: usize) -> Self {
-        let canvas = BrailleCanvas::new(width, height);
+        Self::with_dimensions(width, height)
+    }
+}
+
+impl<R: CellRenderer> CellChartContext<R> {
+    pub fn with_dimensions(width: usize, height: usize) -> Self {
+        let canvas = CellCanvas::<R>::new(width, height);
+        Self::from_canvas(canvas)
+    }
+
+    pub fn from_canvas(canvas: CellCanvas<R>) -> Self {
+        let cell_count = canvas.width * canvas.height;
         Self {
             canvas,
-            background_mask: vec![0; width * height],
+            background_mask: vec![R::Cell::default(); cell_count],
             x_scale: AxisScale::Linear,
             y_scale: AxisScale::Linear,
         }
