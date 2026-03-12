@@ -13,6 +13,7 @@ use crossterm::{
 use std::io::{self, Write};
 use std::thread; // <-- FIX: thread import was missing
 use std::time::{Duration, Instant};
+use support::solar::{plot_z, PickingZBuffer as ZBuffer};
 use support::three_d::{
     make_sphere_points, project_with_projection, rotate_x, rotate_y, rotate_z, Projection, Vec3,
 };
@@ -21,46 +22,6 @@ use txtplot::ChartContext;
 // ============================================================================
 // BASIC 3D MATH AND PHYSICS ENGINE
 // ============================================================================
-
-// ============================================================================
-// GRAPHICS ENGINE: Z-BUFFER AND ID-BUFFER
-// ============================================================================
-struct ZBuffer {
-    w: usize,
-    h: usize,
-    z: Vec<f64>,
-    id: Vec<Option<usize>>, // Tracks which planet drew each pixel (for mouse picking)
-}
-impl ZBuffer {
-    fn new(w: usize, h: usize) -> Self {
-        Self {
-            w,
-            h,
-            z: vec![f64::INFINITY; w * h],
-            id: vec![None; w * h],
-        }
-    }
-    fn clear(&mut self) {
-        self.z.fill(f64::INFINITY);
-        self.id.fill(None);
-    }
-    #[inline]
-    fn idx(&self, x: usize, y: usize) -> usize {
-        y * self.w + x
-    }
-    // Depth test: if the new point is closer (depth < stored z),
-    // update the screen. Otherwise it stays hidden behind what was already drawn.
-    fn test_and_set(&mut self, x: usize, y: usize, depth: f64, body_id: Option<usize>) -> bool {
-        let i = self.idx(x, y);
-        if depth < self.z[i] {
-            self.z[i] = depth;
-            self.id[i] = body_id; // Record the planet that owns this pixel
-            true
-        } else {
-            false
-        }
-    }
-}
 
 // ============================================================================
 // CELESTIAL MECHANICS
@@ -186,28 +147,6 @@ impl CelestialBody {
         v = rotate_x(v, current_tilt);
         v = rotate_y(v, self.prec_rate * t);
         v.add(absolute_orbit_pos)
-    }
-}
-
-// ============================================================================
-// HELPER FUNCTIONS - GEOMETRY GENERATION
-// ============================================================================
-
-fn plot_z(
-    chart: &mut ChartContext,
-    zb: &mut ZBuffer,
-    x: isize,
-    y: isize,
-    z: f64,
-    col: Color,
-    id: Option<usize>,
-) {
-    if x < 0 || y < 0 {
-        return;
-    }
-    let (ux, uy) = (x as usize, y as usize);
-    if ux < zb.w && uy < zb.h && zb.test_and_set(ux, uy, z, id) {
-        chart.canvas.set_pixel_screen(ux, uy, Some(col));
     }
 }
 
@@ -846,59 +785,17 @@ fn main() -> io::Result<()> {
                 }
                 // Mouse events
                 Event::Mouse(me) => {
-                    // Magnetic selection engine (tolerant hitbox)
-                    let get_clicked_id = |col: u16, row: u16, zb: &ZBuffer| -> Option<usize> {
-                        // Desplazamiento aproximado del marco de la terminal
-                        let mouse_px = (col.saturating_sub(2) as isize) * 2;
-                        let mouse_py = (row.saturating_sub(2) as isize) * 4;
-
-                        let mut clicked_id = None;
-                        let mut min_dist = 40.0; // Attraction radius of the "magnet" (40 Braille pixels of tolerance)
-                        let mut closest_z = f64::INFINITY;
-
-                        // Search window so we do not scan the entire screen
-                        let min_x = (mouse_px - 40).max(0) as usize;
-                        let max_x = (mouse_px + 40).min(zb.w as isize - 1) as usize;
-                        let min_y = (mouse_py - 40).max(0) as usize;
-                        let max_y = (mouse_py + 40).min(zb.h as isize - 1) as usize;
-
-                        for py in min_y..=max_y {
-                            for px in min_x..=max_x {
-                                let idx = zb.idx(px, py);
-                                if let Some(id) = zb.id[idx] {
-                                    // Compute distance to the real mouse position
-                                    let dx = px as f64 - mouse_px as f64;
-                                    let dy = py as f64 - mouse_py as f64;
-                                    let dist = (dx * dx + dy * dy).sqrt();
-
-                                    // Keep the drawn pixel closest to the mouse
-                                    if dist < min_dist {
-                                        min_dist = dist;
-                                        closest_z = zb.z[idx];
-                                        clicked_id = Some(id);
-                                    } else if (dist - min_dist).abs() < 1.0 && zb.z[idx] < closest_z
-                                    {
-                                        // Tie-breaker: if two are almost equal, pick the one in front (smaller Z)
-                                        closest_z = zb.z[idx];
-                                        clicked_id = Some(id);
-                                    }
-                                }
-                            }
-                        }
-                        clicked_id
-                    };
-
                     match me.kind {
                         // LEFT CLICK: drag camera or select
                         MouseEventKind::Down(MouseButton::Left) => {
                             is_dragging = true;
                             last_mouse_pos = Some((me.column, me.row));
                             // Select the touched body (even near misses are caught by the magnet)
-                            selected_body = get_clicked_id(me.column, me.row, zb);
+                            selected_body = zb.pick_body(me.column, me.row);
                         }
                         // RIGHT CLICK: follow planet
                         MouseEventKind::Down(MouseButton::Right) => {
-                            let id = get_clicked_id(me.column, me.row, zb);
+                            let id = zb.pick_body(me.column, me.row);
                             follow_body = id;
                             if id.is_some() {
                                 // Following it also selects it automatically
