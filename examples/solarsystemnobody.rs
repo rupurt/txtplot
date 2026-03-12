@@ -2,19 +2,15 @@ mod support;
 
 use colored::Color;
 use crossterm::{
-    cursor,
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-        MouseButton, MouseEventKind,
-    },
-    execute,
-    terminal::{self, ClearType},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind},
+    terminal,
 };
 use std::collections::VecDeque;
-use std::io::{self, Write};
+use std::io;
 use std::thread;
 use std::time::{Duration, Instant};
 use support::solar::{line_z, plot_z, PickingZBuffer as ZBuffer};
+use support::terminal::TerminalSession;
 use support::three_d::{
     make_sphere_points, project_with_projection, rotate_x, rotate_y, Projection, Vec3,
 };
@@ -95,14 +91,7 @@ fn create_body(
 // MAIN LOOP
 // ============================================================================
 fn main() -> io::Result<()> {
-    terminal::enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(
-        stdout,
-        cursor::Hide,
-        terminal::Clear(ClearType::All),
-        EnableMouseCapture
-    )?;
+    let mut terminal_session = TerminalSession::new(true)?;
 
     // --- GRAVITATIONAL SYSTEM SETUP ---
     let mut bodies = Vec::new();
@@ -228,13 +217,6 @@ fn main() -> io::Result<()> {
             match event::read()? {
                 Event::Key(KeyEvent { code, .. }) => match code {
                     KeyCode::Char('q') | KeyCode::Esc => {
-                        execute!(
-                            stdout,
-                            cursor::Show,
-                            terminal::Clear(ClearType::All),
-                            DisableMouseCapture
-                        )?;
-                        terminal::disable_raw_mode()?;
                         return Ok(());
                     }
                     KeyCode::Char('w') => {
@@ -630,15 +612,12 @@ fn main() -> io::Result<()> {
             }
         }
 
-        execute!(stdout, cursor::MoveTo(0, 0))?;
-        print!(
-            "{}",
-            chart_ref
+        terminal_session.present(
+            &chart_ref
                 .canvas
                 .render_with_options(true, Some("Real Physics Simulator (N-Body - Leapfrog)"))
-                .replace('\n', "\r\n")
-        );
-        stdout.flush()?;
+                .replace('\n', "\r\n"),
+        )?;
 
         if ms < 16 {
             thread::sleep(Duration::from_millis(16 - ms as u64));

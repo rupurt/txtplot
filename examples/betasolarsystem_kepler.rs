@@ -2,33 +2,22 @@ mod support;
 
 use colored::Color;
 use crossterm::{
-    cursor,
-    event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-        MouseButton, MouseEventKind,
-    },
-    execute,
-    terminal::{self, ClearType},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEventKind},
+    terminal,
 };
-use std::io::{self, Write};
+use std::io;
 use std::thread; // <-- FIX: thread import was missing
 use std::time::{Duration, Instant};
 use support::kepler::{body, solve_kepler};
 use support::solar::{plot_z, PickingZBuffer as ZBuffer};
+use support::terminal::TerminalSession;
 use support::three_d::{
     make_sphere_points, project_with_projection, rotate_x, rotate_y, Projection, Vec3,
 };
 use txtplot::ChartContext;
 
 fn main() -> io::Result<()> {
-    terminal::enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(
-        stdout,
-        cursor::Hide,
-        terminal::Clear(ClearType::All),
-        EnableMouseCapture
-    )?;
+    let mut terminal_session = TerminalSession::new(true)?;
 
     // ==================================================
     // SOLAR SYSTEM DATASET
@@ -484,13 +473,6 @@ fn main() -> io::Result<()> {
                 }) => {
                     match (code, modifiers) {
                         (KeyCode::Char('q'), _) | (KeyCode::Esc, _) => {
-                            execute!(
-                                stdout,
-                                cursor::Show,
-                                terminal::Clear(ClearType::All),
-                                DisableMouseCapture
-                            )?;
-                            terminal::disable_raw_mode()?;
                             return Ok(());
                         }
 
@@ -847,15 +829,12 @@ fn main() -> io::Result<()> {
         }
 
         // --- DRAW TO TERMINAL ---
-        execute!(stdout, cursor::MoveTo(0, 0))?;
-        print!(
-            "{}",
-            chart_ref
+        terminal_session.present(
+            &chart_ref
                 .canvas
                 .render_with_options(true, Some("Professional Solar System Simulator"))
-                .replace('\n', "\r\n")
-        );
-        stdout.flush()?;
+                .replace('\n', "\r\n"),
+        )?;
 
         // Frame Pacing
         if ms < 16 {
