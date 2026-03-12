@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use colored::Color;
 use txtplot::ChartContext;
 
@@ -62,24 +64,63 @@ impl ZBuffer {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Projection {
+    near_plane: f64,
+    center_x_ratio: f64,
+    center_y_ratio: f64,
+    scale_x: f64,
+    scale_y: f64,
+}
+
+impl Projection {
+    pub fn new(
+        near_plane: f64,
+        center_x_ratio: f64,
+        center_y_ratio: f64,
+        scale_x: f64,
+        scale_y: f64,
+    ) -> Self {
+        Self {
+            near_plane,
+            center_x_ratio,
+            center_y_ratio,
+            scale_x,
+            scale_y,
+        }
+    }
+}
+
+pub fn project_with_projection(
+    v_cam: Vec3,
+    canvas_w: f64,
+    canvas_h: f64,
+    projection: Projection,
+) -> Option<(isize, isize, f64)> {
+    if v_cam.z <= projection.near_plane {
+        return None;
+    }
+
+    let cx = canvas_w * projection.center_x_ratio;
+    let cy = canvas_h * projection.center_y_ratio;
+    let sx = cx + (v_cam.x / v_cam.z) * projection.scale_x;
+    let sy = cy + (v_cam.y / v_cam.z) * projection.scale_y;
+
+    Some((sx.round() as isize, sy.round() as isize, v_cam.z))
+}
+
 pub fn project_to_screen(
     v_cam: Vec3,
     canvas_w: f64,
     canvas_h: f64,
     scale: f64,
 ) -> Option<(isize, isize, f64)> {
-    if v_cam.z <= 0.06 {
-        return None;
-    }
-
-    let px = (v_cam.x / v_cam.z) * 2.0;
-    let py = v_cam.y / v_cam.z;
-    let cx = canvas_w / 2.0;
-    let cy = canvas_h / 2.0;
-    let sx = cx + px * scale;
-    let sy = cy + py * scale;
-
-    Some((sx.round() as isize, sy.round() as isize, v_cam.z))
+    project_with_projection(
+        v_cam,
+        canvas_w,
+        canvas_h,
+        Projection::new(0.06, 0.5, 0.5, scale * 2.0, scale),
+    )
 }
 
 pub fn make_sphere_points(lat_steps: usize, lon_steps: usize) -> Vec<Vec3> {

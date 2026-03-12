@@ -1,4 +1,9 @@
+mod support;
+
 use colored::Color;
+use support::three_d::{
+    line_z, plot_z, project_with_projection, rotate_x, rotate_y, Projection, Vec3, ZBuffer,
+};
 use txtplot::ChartContext;
 
 const STRIKE_MIN: f64 = 0.78;
@@ -7,98 +12,6 @@ const EXPIRY_MIN: f64 = 0.05;
 const EXPIRY_MAX: f64 = 2.00;
 const SURFACE_ROWS: usize = 22;
 const SURFACE_COLS: usize = 28;
-
-#[derive(Clone, Copy, Debug)]
-struct Vec3 {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-
-impl Vec3 {
-    fn new(x: f64, y: f64, z: f64) -> Self {
-        Self { x, y, z }
-    }
-
-    fn add(self, other: Vec3) -> Self {
-        Self::new(self.x + other.x, self.y + other.y, self.z + other.z)
-    }
-}
-
-struct ZBuffer {
-    width: usize,
-    height: usize,
-    depth: Vec<f64>,
-}
-
-impl ZBuffer {
-    fn new(width: usize, height: usize) -> Self {
-        Self {
-            width,
-            height,
-            depth: vec![f64::INFINITY; width * height],
-        }
-    }
-
-    fn test_and_set(&mut self, x: usize, y: usize, depth: f64) -> bool {
-        let idx = y * self.width + x;
-        if depth < self.depth[idx] {
-            self.depth[idx] = depth;
-            true
-        } else {
-            false
-        }
-    }
-}
-
-fn rotate_x(v: Vec3, angle: f64) -> Vec3 {
-    let (sin_a, cos_a) = angle.sin_cos();
-    Vec3::new(v.x, v.y * cos_a - v.z * sin_a, v.y * sin_a + v.z * cos_a)
-}
-
-fn rotate_y(v: Vec3, angle: f64) -> Vec3 {
-    let (sin_a, cos_a) = angle.sin_cos();
-    Vec3::new(v.x * cos_a - v.z * sin_a, v.y, v.x * sin_a + v.z * cos_a)
-}
-
-fn project_to_screen(
-    v: Vec3,
-    width_px: f64,
-    height_px: f64,
-    scale: f64,
-) -> Option<(isize, isize, f64)> {
-    if v.z <= 0.2 {
-        return None;
-    }
-
-    let sx = width_px * 0.5 + (v.x / v.z) * scale;
-    let sy = height_px * 0.58 - (v.y / v.z) * scale;
-    Some((sx.round() as isize, sy.round() as isize, v.z))
-}
-
-fn plot_z(
-    chart: &mut ChartContext,
-    zbuf: &mut ZBuffer,
-    x: isize,
-    y: isize,
-    depth: f64,
-    color: Color,
-) {
-    if x < 0 || y < 0 {
-        return;
-    }
-
-    let ux = x as usize;
-    let uy = y as usize;
-
-    if ux >= zbuf.width || uy >= zbuf.height {
-        return;
-    }
-
-    if zbuf.test_and_set(ux, uy, depth) {
-        chart.canvas.set_pixel_screen(ux, uy, Some(color));
-    }
-}
 
 fn stamp_z(
     chart: &mut ChartContext,
@@ -110,31 +23,6 @@ fn stamp_z(
 ) {
     for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] {
         plot_z(chart, zbuf, x + dx, y + dy, depth - 0.02, color);
-    }
-}
-
-fn line_z(
-    chart: &mut ChartContext,
-    zbuf: &mut ZBuffer,
-    start: (isize, isize, f64),
-    end: (isize, isize, f64),
-    color: Color,
-) {
-    let steps = (end.0 - start.0).abs().max((end.1 - start.1).abs()).max(1) as usize;
-
-    for step in 0..=steps {
-        let t = step as f64 / steps as f64;
-        let x = start.0 as f64 + (end.0 - start.0) as f64 * t;
-        let y = start.1 as f64 + (end.1 - start.1) as f64 * t;
-        let z = start.2 + (end.2 - start.2) * t;
-        plot_z(
-            chart,
-            zbuf,
-            x.round() as isize,
-            y.round() as isize,
-            z,
-            color,
-        );
     }
 }
 
@@ -212,6 +100,7 @@ fn main() {
     let width_px = chart.canvas.pixel_width() as f64;
     let height_px = chart.canvas.pixel_height() as f64;
     let mut zbuf = ZBuffer::new(chart.canvas.pixel_width(), chart.canvas.pixel_height());
+    let projection = Projection::new(0.2, 0.5, 0.58, 62.0, -62.0);
 
     let mut surface = Vec::with_capacity(SURFACE_ROWS + 1);
     let mut min_vol = f64::INFINITY;
@@ -244,8 +133,8 @@ fn main() {
                 let color = surface_color((a.2 + b.2) * 0.5, min_vol, max_vol);
 
                 if let (Some(a2d), Some(b2d)) = (
-                    project_to_screen(pa, width_px, height_px, 62.0),
-                    project_to_screen(pb, width_px, height_px, 62.0),
+                    project_with_projection(pa, width_px, height_px, projection),
+                    project_with_projection(pb, width_px, height_px, projection),
                 ) {
                     line_z(&mut chart, &mut zbuf, a2d, b2d, color);
                 }
@@ -259,8 +148,8 @@ fn main() {
                 let color = surface_color((a.2 + b.2) * 0.5, min_vol, max_vol);
 
                 if let (Some(a2d), Some(b2d)) = (
-                    project_to_screen(pa, width_px, height_px, 62.0),
-                    project_to_screen(pb, width_px, height_px, 62.0),
+                    project_with_projection(pa, width_px, height_px, projection),
+                    project_with_projection(pb, width_px, height_px, projection),
                 ) {
                     line_z(&mut chart, &mut zbuf, a2d, b2d, color);
                 }
@@ -276,8 +165,8 @@ fn main() {
         let pb = camera_space(world_point(b.0, b.1, b.2, 0.10));
 
         if let (Some(a2d), Some(b2d)) = (
-            project_to_screen(pa, width_px, height_px, 62.0),
-            project_to_screen(pb, width_px, height_px, 62.0),
+            project_with_projection(pa, width_px, height_px, projection),
+            project_with_projection(pb, width_px, height_px, projection),
         ) {
             line_z(
                 &mut chart,
@@ -299,7 +188,7 @@ fn main() {
 
     if let Some(last) = path.last() {
         let peak = camera_space(world_point(last.0, last.1, last.2, 0.12));
-        if let Some(peak2d) = project_to_screen(peak, width_px, height_px, 62.0) {
+        if let Some(peak2d) = project_with_projection(peak, width_px, height_px, projection) {
             stamp_z(
                 &mut chart,
                 &mut zbuf,
