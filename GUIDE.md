@@ -100,14 +100,14 @@ fn main() {
 
 ## 3D Visualizations
 
-`txtplot` does not provide a high-level scene graph or camera API. The intended pattern is:
+`txtplot` does not provide a full scene graph, but it now exports reusable 3D building blocks in `txtplot::three_d`. The intended pattern is:
 
-1. Keep your own scene, camera, and projection math
-2. Project world-space points into screen-space pixels
-3. Draw with `set_pixel_screen()`, `line_screen()`, and text helpers
-4. Add your own z-buffer or visibility logic if needed
+1. Keep your own scene and camera logic
+2. Use `txtplot::three_d::Projection`, `project_with_projection()`, or `project_to_screen()`
+3. Draw with `txtplot::three_d::plot_z()` / `line_z()` or direct screen-space canvas APIs
+4. Reuse `txtplot::three_d::ZBuffer` for visibility
 
-This works well because the canvas is just a fast terminal raster target.
+This works well because the canvas remains a fast terminal raster target, and the 3D helpers stay thin and data-oriented.
 
 Recommended examples:
 

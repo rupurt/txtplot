@@ -1,5 +1,3 @@
-mod support;
-
 use colored::Color;
 use crossterm::{
     cursor,
@@ -9,7 +7,7 @@ use crossterm::{
 };
 use std::io::{self, Write};
 use std::{thread, time};
-use support::three_d::{
+use txtplot::three_d::{
     line_z, make_sphere_points, make_torus_rings, make_triangle, plot_z, project_to_screen,
     rotate_x, rotate_y, Vec3, ZBuffer,
 };
@@ -77,10 +75,8 @@ fn main() -> io::Result<()> {
             let width = (cols as usize).saturating_sub(4);
             let height = (rows as usize).saturating_sub(6);
             let new_chart = ChartContext::new(width, height);
-            let w_px = new_chart.canvas.pixel_width();
-            let h_px = new_chart.canvas.pixel_height();
             chart = Some(new_chart);
-            zbuf = Some(ZBuffer::new(w_px, h_px));
+            zbuf = Some(ZBuffer::from_canvas(&chart.as_ref().unwrap().canvas));
         }
 
         let chart_ref = chart.as_mut().unwrap();
@@ -156,7 +152,7 @@ fn main() -> io::Result<()> {
         // Helper closure: world->camera->screen
         let to_screen = |v_world: Vec3| -> Option<(isize, isize, f64)> {
             // camera space is world - cam
-            let v_cam = v_world.sub(cam);
+            let v_cam = v_world - cam;
             project_to_screen(v_cam, cw, ch, scale)
         };
 
@@ -164,15 +160,15 @@ fn main() -> io::Result<()> {
         if show_triangle {
             let mut p: Vec<(isize, isize, f64)> = Vec::with_capacity(3);
             for v in tri.iter() {
-                let v = rotate_y(rotate_x(*v, angle_x * 0.9), angle_y * 1.1).add(pos_tri);
+                let v = rotate_y(rotate_x(*v, angle_x * 0.9), angle_y * 1.1) + pos_tri;
                 if let Some(ps) = to_screen(v) {
                     p.push(ps);
                 }
             }
             if p.len() == 3 {
-                line_z(chart_ref, zb, p[0], p[1], Color::Yellow);
-                line_z(chart_ref, zb, p[1], p[2], Color::Yellow);
-                line_z(chart_ref, zb, p[2], p[0], Color::Yellow);
+                line_z(&mut chart_ref.canvas, zb, p[0], p[1], Color::Yellow);
+                line_z(&mut chart_ref.canvas, zb, p[1], p[2], Color::Yellow);
+                line_z(&mut chart_ref.canvas, zb, p[2], p[0], Color::Yellow);
             }
         }
 
@@ -183,12 +179,12 @@ fn main() -> io::Result<()> {
                 let mut vv = *v;
                 vv = rotate_x(vv, angle_x);
                 vv = rotate_y(vv, angle_y);
-                vv = vv.add(pos_cube);
+                vv = vv + pos_cube;
                 proj.push(to_screen(vv));
             }
             for (a, b) in cube_edges.iter() {
                 if let (Some(p1), Some(p2)) = (proj[*a], proj[*b]) {
-                    line_z(chart_ref, zb, p1, p2, Color::Cyan);
+                    line_z(&mut chart_ref.canvas, zb, p1, p2, Color::Cyan);
                 }
             }
         }
@@ -204,11 +200,11 @@ fn main() -> io::Result<()> {
                     let mut v = *v0;
                     v = rotate_x(v, angle_x * 0.75);
                     v = rotate_y(v, angle_y * 1.25);
-                    v = v.add(pos_torus);
+                    v = v + pos_torus;
 
                     if let Some(p) = to_screen(v) {
                         if let Some(pp) = prev {
-                            line_z(chart_ref, zb, pp, p, Color::Magenta);
+                            line_z(&mut chart_ref.canvas, zb, pp, p, Color::Magenta);
                         }
                         prev = Some(p);
                     } else {
@@ -225,7 +221,7 @@ fn main() -> io::Result<()> {
                 v = rotate_x(v, angle_x * 1.15);
                 v = rotate_y(v, angle_y * 0.85);
                 v = Vec3::new(v.x * 1.15, v.y * 1.15, v.z * 1.15);
-                v = v.add(pos_sphere);
+                v = v + pos_sphere;
 
                 if let Some((sx, sy, z)) = to_screen(v) {
                     let col = if p0.y > 0.35 {
@@ -235,7 +231,7 @@ fn main() -> io::Result<()> {
                     } else {
                         Color::White
                     };
-                    plot_z(chart_ref, zb, sx, sy, z, col);
+                    plot_z(&mut chart_ref.canvas, zb, sx, sy, z, col);
                 }
             }
         }
@@ -253,7 +249,7 @@ fn main() -> io::Result<()> {
                     let mut v = *v0;
                     v = rotate_x(v, angle_x * 1.05);
                     v = rotate_y(v, angle_y * 0.95);
-                    v = v.add(pos_donut);
+                    v = v + pos_donut;
 
                     if let Some((sx, sy, z)) = to_screen(v) {
                         let col = if v0.y > 0.2 {
@@ -263,7 +259,7 @@ fn main() -> io::Result<()> {
                         } else {
                             Color::BrightMagenta
                         };
-                        plot_z(chart_ref, zb, sx, sy, z, col);
+                        plot_z(&mut chart_ref.canvas, zb, sx, sy, z, col);
                     }
                 }
             }

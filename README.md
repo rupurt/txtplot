@@ -42,6 +42,10 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
   - `scatter()`, `line_chart()`, `bar_chart()`, `pie_chart()`, `plot_function()`
   - linear and `log10` axes through `AxisScale`
 - Auto-range and axis helpers for chart setup
+- Exported 3D building blocks in `txtplot::three_d`:
+  - `Vec3`, `Projection`, and `ZBuffer`
+  - screen projection helpers plus z-buffered raster helpers
+  - sphere, torus, and triangle mesh generators
 
 ## Installation
 
@@ -132,7 +136,7 @@ cargo run --release --example renderer_showcase
 
 ### 3D Surface Example
 
-`txtplot` does not ship a high-level 3D scene API, but the screen-space pixel primitives are enough to build one. The new surface example projects a volatility mesh into terminal pixels, uses a tiny z-buffer for occlusion, and overlays a gradient-ascent path:
+`txtplot` does not ship a full scene graph, but it now exports reusable 3D math, projection, and z-buffer helpers under `txtplot::three_d`. The surface example projects a volatility mesh into terminal pixels, uses a z-buffer for occlusion, and overlays a gradient-ascent path:
 
 ```bash
 cargo run --release --example vol_surface

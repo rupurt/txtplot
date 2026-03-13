@@ -17,6 +17,7 @@ The repository is intentionally compact, but the core modules are now split into
 | `src/canvas/*.rs` | Canvas composition, pixel operations, clipping, primitives, UI helpers, rendering, tests |
 | `src/charts/mod.rs` | `ChartContext`, `AxisScale`, and shared plot geometry helpers |
 | `src/charts/*.rs` | Range helpers, overlays, axes, chart series, tests |
+| `src/three_d.rs` | Reusable 3D math, projection, z-buffer, and mesh helpers built on the raster layer |
 | `src/prelude.rs` | Convenient downstream re-exports |
 | `examples/` | End-to-end examples and visual demos |
 | `benches/` | Performance benchmarks |
@@ -28,7 +29,7 @@ The public API is intentionally split into two layers:
 
 | Layer | Primary Types | Role |
 |------|---------------|------|
-| Raster layer | `BrailleCanvas`, `ColorBlend` | Pixel-space drawing, composition, and output |
+| Raster layer | `BrailleCanvas`, `ColorBlend`, `txtplot::three_d` | Pixel-space drawing, composition, output, and screen-space 3D helpers |
 | Plotting layer | `ChartContext`, `AxisScale` | Data-space mapping, range handling, axes, charts |
 
 `src/lib.rs` exports those types directly. `src/prelude.rs` exists as the ergonomic import path for downstream consumers.

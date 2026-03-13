@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use support::kepler::{body, solve_kepler};
 use support::solar::{plot_z, PickingZBuffer as ZBuffer};
 use support::terminal::TerminalSession;
-use support::three_d::{
+use txtplot::three_d::{
     make_sphere_points, project_with_projection, rotate_x, rotate_y, Projection, Vec3,
 };
 use txtplot::ChartContext;
@@ -619,7 +619,7 @@ fn main() -> io::Result<()> {
         for (i, body) in bodies.iter().enumerate() {
             let mut p = body.get_local_orbit_pos(sim_time);
             if let Some(parent_idx) = body.parent {
-                p = p.add(abs_pos[parent_idx]);
+                p = p + abs_pos[parent_idx];
             }
             abs_pos[i] = p;
         }
@@ -631,7 +631,7 @@ fn main() -> io::Result<()> {
         };
 
         let to_screen = |v_world: Vec3| -> Option<(isize, isize, f64)> {
-            let mut v_cam = v_world.sub(camera_target_offset).sub(cam_pos);
+            let mut v_cam = v_world - camera_target_offset - cam_pos;
             v_cam = rotate_y(v_cam, -cam_yaw);
             v_cam = rotate_x(v_cam, -cam_pitch);
             project_with_projection(v_cam, cw, ch, projection)
@@ -664,7 +664,7 @@ fn main() -> io::Result<()> {
                     p = rotate_y(p, current_w);
                     p = rotate_x(p, body.i);
                     p = rotate_y(p, body.omega);
-                    p = p.add(parent_pos);
+                    p = p + parent_pos;
 
                     if let Some(proj) = to_screen(p) {
                         if let Some(prev) = prev_proj {
@@ -705,7 +705,7 @@ fn main() -> io::Result<()> {
                     if body.is_star {
                         final_color = body.color;
                     } else {
-                        let light_dir = sun_pos.sub(v_world).normalize();
+                        let light_dir = (sun_pos - v_world).normalize();
                         let intensity = normal.dot(light_dir);
 
                         if intensity > 0.4 {

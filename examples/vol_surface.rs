@@ -1,7 +1,5 @@
-mod support;
-
 use colored::Color;
-use support::three_d::{
+use txtplot::three_d::{
     line_z, plot_z, project_with_projection, rotate_x, rotate_y, Projection, Vec3, ZBuffer,
 };
 use txtplot::ChartContext;
@@ -22,7 +20,7 @@ fn stamp_z(
     color: Color,
 ) {
     for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] {
-        plot_z(chart, zbuf, x + dx, y + dy, depth - 0.02, color);
+        plot_z(&mut chart.canvas, zbuf, x + dx, y + dy, depth - 0.02, color);
     }
 }
 
@@ -92,14 +90,14 @@ fn world_point(strike: f64, expiry: f64, vol: f64, lift: f64) -> Vec3 {
 }
 
 fn camera_space(point: Vec3) -> Vec3 {
-    rotate_y(rotate_x(point, -0.72), 0.90).add(Vec3::new(0.0, -0.35, 10.5))
+    rotate_y(rotate_x(point, -0.72), 0.90) + Vec3::new(0.0, -0.35, 10.5)
 }
 
 fn main() {
     let mut chart = ChartContext::new(74, 22);
     let width_px = chart.canvas.pixel_width() as f64;
     let height_px = chart.canvas.pixel_height() as f64;
-    let mut zbuf = ZBuffer::new(chart.canvas.pixel_width(), chart.canvas.pixel_height());
+    let mut zbuf = ZBuffer::from_canvas(&chart.canvas);
     let projection = Projection::new(0.2, 0.5, 0.58, 62.0, -62.0);
 
     let mut surface = Vec::with_capacity(SURFACE_ROWS + 1);
@@ -136,7 +134,7 @@ fn main() {
                     project_with_projection(pa, width_px, height_px, projection),
                     project_with_projection(pb, width_px, height_px, projection),
                 ) {
-                    line_z(&mut chart, &mut zbuf, a2d, b2d, color);
+                    line_z(&mut chart.canvas, &mut zbuf, a2d, b2d, color);
                 }
             }
 
@@ -151,7 +149,7 @@ fn main() {
                     project_with_projection(pa, width_px, height_px, projection),
                     project_with_projection(pb, width_px, height_px, projection),
                 ) {
-                    line_z(&mut chart, &mut zbuf, a2d, b2d, color);
+                    line_z(&mut chart.canvas, &mut zbuf, a2d, b2d, color);
                 }
             }
         }
@@ -169,7 +167,7 @@ fn main() {
             project_with_projection(pb, width_px, height_px, projection),
         ) {
             line_z(
-                &mut chart,
+                &mut chart.canvas,
                 &mut zbuf,
                 (a2d.0, a2d.1, a2d.2 - 0.05),
                 (b2d.0, b2d.1, b2d.2 - 0.05),

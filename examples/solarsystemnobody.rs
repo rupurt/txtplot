@@ -11,7 +11,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use support::solar::{line_z, plot_z, PickingZBuffer as ZBuffer};
 use support::terminal::TerminalSession;
-use support::three_d::{
+use txtplot::three_d::{
     make_sphere_points, project_with_projection, rotate_x, rotate_y, Projection, Vec3,
 };
 use txtplot::ChartContext;
@@ -47,7 +47,7 @@ impl PhysicsBody {
         v = rotate_y(v, self.rot_angle);
         normal = rotate_y(normal, self.rot_angle);
 
-        (v.add(self.pos), normal.normalize())
+        (v + self.pos, normal.normalize())
     }
 }
 
@@ -57,9 +57,9 @@ fn get_circular_orbit(
     center_vel: Vec3,
     distance: f64,
 ) -> (Vec3, Vec3) {
-    let pos = center_pos.add(Vec3::new(distance, 0.0, 0.0));
+    let pos = center_pos + Vec3::new(distance, 0.0, 0.0);
     let v_mag = (G * center_mass / distance).sqrt();
-    let vel = center_vel.add(Vec3::new(0.0, 0.0, v_mag));
+    let vel = center_vel + Vec3::new(0.0, 0.0, v_mag);
     (pos, vel)
 }
 
@@ -315,8 +315,8 @@ fn main() -> io::Result<()> {
                                 Vec3::new(0.0, 0.0, 0.0)
                             };
 
-                            let spawn_pos = cam_pos.add(target_offset).add(aim_dir.mul(5.0));
-                            let throw_vel = aim_dir.mul(25.0);
+                            let spawn_pos = cam_pos + target_offset + aim_dir * 5.0;
+                            let throw_vel = aim_dir * 25.0;
 
                             let ast_name = format!("Asteroid-{}", asteroide_id_counter);
                             asteroide_id_counter += 1;
@@ -379,9 +379,9 @@ fn main() -> io::Result<()> {
                 // 1. First half-step (Verlet): update positions and precompute half-step velocity
                 for b in bodies.iter_mut() {
                     if b.mass > 0.0 {
-                        let acc = b.force.mul(1.0 / b.mass);
-                        b.pos = b.pos.add(b.vel.mul(dt)).add(acc.mul(0.5 * dt * dt));
-                        b.vel = b.vel.add(acc.mul(0.5 * dt)); // v(t + 0.5*dt)
+                        let acc = b.force * (1.0 / b.mass);
+                        b.pos = b.pos + b.vel * dt + acc * (0.5 * dt * dt);
+                        b.vel = b.vel + acc * (0.5 * dt); // v(t + 0.5*dt)
                     }
                     b.force = Vec3::new(0.0, 0.0, 0.0); // Reset forces for the new calculation
                 }
@@ -389,23 +389,23 @@ fn main() -> io::Result<()> {
                 // 2. Compute NEW forces at the newly updated positions
                 for i in 0..n {
                     for j in i + 1..n {
-                        let d = bodies[j].pos.sub(bodies[i].pos);
+                        let d = bodies[j].pos - bodies[i].pos;
                         let dist_sq = d.dot(d);
                         let eps2 = 2.0 * 2.0; // ε^2 (ajusta ε a gusto)
                         let r2 = dist_sq + eps2;
                         let inv_r = 1.0 / r2.sqrt();
                         let inv_r3 = inv_r * inv_r * inv_r;
-                        let force_vec = d.mul(G * bodies[i].mass * bodies[j].mass * inv_r3);
-                        bodies[i].force = bodies[i].force.add(force_vec);
-                        bodies[j].force = bodies[j].force.sub(force_vec);
+                        let force_vec = d * (G * bodies[i].mass * bodies[j].mass * inv_r3);
+                        bodies[i].force = bodies[i].force + force_vec;
+                        bodies[j].force = bodies[j].force - force_vec;
                     }
                 }
 
                 // 3. Complete the velocity step with the new forces
                 for b in bodies.iter_mut() {
                     if b.mass > 0.0 {
-                        let acc = b.force.mul(1.0 / b.mass);
-                        b.vel = b.vel.add(acc.mul(0.5 * dt)); // v(t + dt)
+                        let acc = b.force * (1.0 / b.mass);
+                        b.vel = b.vel + acc * (0.5 * dt); // v(t + dt)
                     }
                     b.rot_angle += b.rot_rate * dt;
                 }
@@ -413,7 +413,7 @@ fn main() -> io::Result<()> {
 
             for b in bodies.iter_mut() {
                 if let Some(last) = b.trail.back() {
-                    if b.pos.sub(*last).norm() > 0.8 {
+                    if (b.pos - *last).norm() > 0.8 {
                         b.trail.push_back(b.pos);
                         if b.trail.len() > 100 {
                             b.trail.pop_front();
@@ -438,7 +438,7 @@ fn main() -> io::Result<()> {
         };
 
         let to_screen = |v_world: Vec3| -> Option<(isize, isize, f64)> {
-            let mut v_cam = v_world.sub(camera_target_offset).sub(cam_pos);
+            let mut v_cam = v_world - camera_target_offset - cam_pos;
             v_cam = rotate_y(v_cam, -cam_yaw);
             v_cam = rotate_x(v_cam, -cam_pitch);
             project_with_projection(
@@ -477,7 +477,7 @@ fn main() -> io::Result<()> {
                     if body.is_star {
                         final_color = body.color;
                     } else {
-                        let light_dir = sun_pos.sub(v_world).normalize();
+                        let light_dir = (sun_pos - v_world).normalize();
                         let intensity = normal.dot(light_dir);
                         if intensity > 0.4 {
                             final_color = body.color;

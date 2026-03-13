@@ -2,7 +2,7 @@
 
 use colored::Color;
 
-use crate::support::three_d::{rotate_x, rotate_y, rotate_z, Vec3};
+use txtplot::three_d::{rotate_x, rotate_y, rotate_z, Vec3};
 
 /// Solves Kepler's equation (M = E - e * sin(E)) using Newton-Raphson.
 pub fn solve_kepler(m: f64, e: f64) -> f64 {
@@ -89,7 +89,7 @@ impl CelestialBody {
         v = rotate_y(v, self.prec_rate * t);
         normal = rotate_y(normal, self.prec_rate * t);
 
-        v = v.add(absolute_orbit_pos);
+        v = v + absolute_orbit_pos;
         (v, normal.normalize())
     }
 
@@ -99,7 +99,7 @@ impl CelestialBody {
         let current_tilt = self.axial_tilt + self.nut_amp * (self.nut_rate * t).cos();
         v = rotate_x(v, current_tilt);
         v = rotate_y(v, self.prec_rate * t);
-        v.add(absolute_orbit_pos)
+        v + absolute_orbit_pos
     }
 }
 

@@ -6,3 +6,4 @@ pub use crate::charts::{
     AxisScale, BrailleChartContext, CellChartContext, ChartContext, HalfBlockChartContext,
     QuadrantChartContext,
 };
+pub use crate::three_d::{Projection, Vec3, ZBuffer};
