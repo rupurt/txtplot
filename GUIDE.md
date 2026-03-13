@@ -131,7 +131,7 @@ Typical flow:
 1. Create a canvas once
 2. Clear and redraw each frame
 3. Use screen coordinates for sprites, UI chrome, and projected geometry
-4. Overlay text with `set_char()` and use `set_cell_background()` for panel-style cells
+4. Overlay text with `text_screen()`, `label_screen()`, `panel_screen()`, and `set_cell_background()`
 5. Render into a reusable `String` with `render_to()`
 
 Good fits for direct-canvas work:
@@ -141,6 +141,12 @@ Good fits for direct-canvas work:
 - minimaps and status HUDs
 - terminal dashboards
 - custom widgets that do not map cleanly to `(x, y)` data
+
+Useful HUD helpers:
+
+- `text_screen()` for top-left text placement in terminal cell coordinates
+- `label_screen()` for compact status pills and colored labels
+- `panel_screen()` for bordered boxes with optional background fill and title text
 
 Recommended examples:
 

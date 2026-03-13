@@ -14,7 +14,7 @@ The repository is intentionally compact, but the core modules are now split into
 |------|----------------|
 | `src/lib.rs` | Crate-root wiring and public facade |
 | `src/canvas/mod.rs` | `BrailleCanvas`, `ColorBlend`, and shared low-level buffer helpers |
-| `src/canvas/*.rs` | Canvas composition, pixel operations, clipping, primitives, rendering, tests |
+| `src/canvas/*.rs` | Canvas composition, pixel operations, clipping, primitives, UI helpers, rendering, tests |
 | `src/charts/mod.rs` | `ChartContext`, `AxisScale`, and shared plot geometry helpers |
 | `src/charts/*.rs` | Range helpers, overlays, axes, chart series, tests |
 | `src/prelude.rs` | Convenient downstream re-exports |
@@ -45,6 +45,7 @@ The public API is intentionally split into two layers:
 - Stores an optional text overlay layer per cell
 - Tracks plot insets in pixel coordinates
 - Owns composition helpers such as overlay and merge behavior
+- Exposes cell-space text, label, and panel helpers for HUD work
 
 Current design goals:
 

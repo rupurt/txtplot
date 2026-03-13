@@ -33,6 +33,7 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
   - `unset_pixel` and `toggle_pixel`
   - color blending modes with `Overwrite` and `KeepFirst`
   - cell background colors for terminal panels and HUD-style layouts
+  - cell-space UI helpers with `text_screen()`, `label_screen()`, and `panel_screen()`
 - Drawing primitives:
   - lines, circles, polygons
   - filled shapes via `rect_filled` and `circle_filled`
@@ -159,6 +160,12 @@ Pixel manipulation methods:
 - `set_pixel / set_pixel_screen`: turn a dot on
 - `unset_pixel / unset_pixel_screen`: turn a dot off
 - `toggle_pixel_screen`: flip the current state of a dot
+
+Cell-space HUD methods:
+
+- `text_screen`: write text in top-left screen coordinates
+- `label_screen`: write text with per-cell background styling
+- `panel_screen`: draw boxed UI regions for dashboards and overlays
 
 ## Demo Output
 

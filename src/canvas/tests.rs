@@ -1,4 +1,4 @@
-use super::{BrailleCanvas, HalfBlockCanvas, QuadrantCanvas};
+use super::{BrailleCanvas, CellRect, HalfBlockCanvas, PanelStyle, QuadrantCanvas};
 use colored::Color;
 
 #[test]
@@ -129,4 +129,54 @@ fn background_only_cells_render_as_spaces_with_background() {
     let rendered = canvas.render_with_options(false, None);
 
     assert!(rendered.contains("\x1b[100m "));
+}
+
+#[test]
+fn text_screen_starts_from_top_left() {
+    let mut canvas = BrailleCanvas::new(4, 2);
+    canvas.text_screen(1, 0, "HI", None);
+
+    let rendered = canvas
+        .render_with_options(false, None)
+        .replace('\u{2800}', " ");
+    let rows: Vec<_> = rendered.lines().collect();
+
+    assert_eq!(rows[0], " HI ");
+    assert_eq!(rows[1], "    ");
+}
+
+#[test]
+fn label_screen_applies_per_cell_background() {
+    let mut canvas = BrailleCanvas::new(3, 1);
+    canvas.label_screen(0, 0, "OK", Some(Color::White), Some(Color::Blue));
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[44m"));
+    assert!(rendered.contains("OK"));
+}
+
+#[test]
+fn panel_screen_draws_box_and_title() {
+    let mut canvas = BrailleCanvas::new(10, 5);
+    canvas.panel_screen(
+        CellRect::new(1, 1, 8, 3),
+        Some("CPU"),
+        PanelStyle {
+            border_color: Some(Color::White),
+            background_color: Some(Color::BrightBlack),
+            title_color: Some(Color::Yellow),
+            title_background: Some(Color::Blue),
+        },
+    );
+
+    let rendered = canvas
+        .render_with_options(false, None)
+        .replace('\u{2800}', " ");
+
+    assert!(rendered.contains('┌'));
+    assert!(rendered.contains('┐'));
+    assert!(rendered.contains('└'));
+    assert!(rendered.contains('┘'));
+    assert!(rendered.contains("CPU"));
 }

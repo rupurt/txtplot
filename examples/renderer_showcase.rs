@@ -1,7 +1,7 @@
 use colored::Color;
 use txtplot::{
-    CellCanvas, CellChartContext, CellRenderer, ChartContext, HalfBlockChartContext,
-    QuadrantChartContext,
+    CellCanvas, CellChartContext, CellRect, CellRenderer, ChartContext, HalfBlockChartContext,
+    PanelStyle, QuadrantChartContext,
 };
 
 fn build_signal_chart<R: CellRenderer>() -> CellChartContext<R> {
@@ -44,24 +44,26 @@ fn build_raster_demo<R: CellRenderer>() -> CellCanvas<R> {
         (height_px / 4).max(1),
         Some(Color::Red),
     );
-    canvas.text_layered_label("RAW", Some(Color::BrightWhite));
+    canvas.panel_screen(
+        CellRect::new(1, 1, 10, 3),
+        Some("HUD"),
+        PanelStyle {
+            border_color: Some(Color::BrightWhite),
+            background_color: Some(Color::BrightBlack),
+            title_color: Some(Color::BrightWhite),
+            title_background: Some(Color::Blue),
+        },
+    );
+    canvas.label_screen(
+        2,
+        2,
+        "RAW",
+        Some(Color::BrightWhite),
+        Some(Color::BrightBlue),
+    );
+    canvas.text_screen(6, 2, "mix", Some(Color::Cyan));
 
     canvas
-}
-
-trait LabelCanvas {
-    fn text_layered_label(&mut self, label: &str, color: Option<Color>);
-}
-
-impl<R: CellRenderer> LabelCanvas for CellCanvas<R> {
-    fn text_layered_label(&mut self, label: &str, color: Option<Color>) {
-        for (offset, ch) in label.chars().enumerate() {
-            if offset >= self.width {
-                break;
-            }
-            self.set_char(offset, self.height.saturating_sub(2), ch, color);
-        }
-    }
 }
 
 fn print_canvas<R: CellRenderer>(name: &str, canvas: &CellCanvas<R>) {

@@ -82,12 +82,6 @@ impl<R: CellRenderer> CellCanvas<R> {
 
     pub fn set_char(&mut self, col: usize, row: usize, c: char, color: Option<Color>) {
         let inverted_row = self.height.saturating_sub(1).saturating_sub(row);
-        if col < self.width && inverted_row < self.height {
-            let idx = self.idx(col, inverted_row);
-            self.text_layer[idx] = Some(c);
-            if let Some(col_val) = color {
-                self.colors[idx] = Some(col_val);
-            }
-        }
+        self.set_char_screen(col, inverted_row, c, color);
     }
 }
