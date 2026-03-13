@@ -49,7 +49,8 @@ The library is configured through Rust types, not a config file.
 
 | Surface | Purpose |
 |---------|---------|
-| `BrailleCanvas::new(width, height)` | Set the terminal cell dimensions |
+| `BrailleCanvas::new(width, height)` / `HalfBlockCanvas::new(...)` / `QuadrantCanvas::new(...)` | Set terminal cell dimensions with a concrete renderer |
+| `CellCanvas::<R>::new(width, height)` | Construct a canvas with an explicit renderer type |
 | `ColorBlend` | Control how per-cell colors are combined |
 | `set_plot_insets` | Reserve margin space in pixel coordinates |
 
@@ -57,10 +58,20 @@ The library is configured through Rust types, not a config file.
 
 | Surface | Purpose |
 |---------|---------|
-| `ChartContext::new(width, height)` | Create a plotting context |
+| `ChartContext::new(width, height)` / `HalfBlockChartContext::with_dimensions(...)` / `QuadrantChartContext::with_dimensions(...)` | Create a plotting context with a concrete renderer |
+| `CellChartContext::<R>::with_dimensions(width, height)` | Construct a plotting context with an explicit renderer type |
 | `set_x_scale` / `set_y_scale` / `set_scales` | Configure axis transforms |
 | `get_auto_range` / `get_auto_range_scaled` | Compute plotting ranges from data |
 | axis and chart helpers | Control labels, ticks, and plotted output |
+
+### 3D-level controls
+
+| Surface | Purpose |
+|---------|---------|
+| `txtplot::three_d::Projection` | Configure camera-space to screen-space projection |
+| `txtplot::three_d::ZBuffer` | Track visible depth during 3D rasterization |
+| `project_with_projection` / `project_to_screen` | Project 3D points into terminal screen space |
+| `plot_z` / `line_z` | Draw depth-tested 3D points and lines on a canvas |
 
 ## Cargo Configuration
 

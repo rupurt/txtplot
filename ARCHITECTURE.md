@@ -4,7 +4,9 @@ This document describes the current implementation architecture of `txtplot`: th
 
 ## Scope
 
-This is the implementation contract for module ownership, data flow, and extension boundaries. Project principles live in `CONSTITUTION.md`. User-facing usage patterns live in `GUIDE.md`.
+This is the implementation contract for module ownership, data flow, extension boundaries, and the primary planning document for architectural slices. Project principles live in `CONSTITUTION.md`. User-facing usage patterns live in `GUIDE.md`.
+
+When a refactor or feature slice changes architectural priorities, update this file first. Short-term work should be tracked here, not scattered across commit messages or example-only notes.
 
 ## Source Layout
 
@@ -29,18 +31,18 @@ The public API is intentionally split into two layers:
 
 | Layer | Primary Types | Role |
 |------|---------------|------|
-| Raster layer | `BrailleCanvas`, `ColorBlend`, `txtplot::three_d` | Pixel-space drawing, composition, output, and screen-space 3D helpers |
-| Plotting layer | `ChartContext`, `AxisScale` | Data-space mapping, range handling, axes, charts |
+| Raster layer | `CellCanvas<R>`, `ColorBlend`, `txtplot::three_d` | Pixel-space drawing, composition, output, and screen-space 3D helpers |
+| Plotting layer | `CellChartContext<R>`, `AxisScale` | Data-space mapping, range handling, axes, charts |
 
-`src/lib.rs` exports those types directly. `src/prelude.rs` exists as the ergonomic import path for downstream consumers.
+`src/lib.rs` exports those types directly. `src/prelude.rs` exists as the ergonomic import path for downstream consumers. Compatibility aliases such as `BrailleCanvas`, `HalfBlockCanvas`, `QuadrantCanvas`, and `ChartContext` remain the ergonomic defaults.
 
 ## Core Data Structures
 
-### `BrailleCanvas`
+### `CellCanvas<R>`
 
-`BrailleCanvas` is the low-level rendering substrate.
+`CellCanvas<R>` is the low-level rendering substrate. Renderer aliases such as `BrailleCanvas`, `HalfBlockCanvas`, and `QuadrantCanvas` are compatibility and ergonomics layers over the same core structure.
 
-- Stores one byte mask per terminal cell for Braille dots
+- Stores one renderer-specific cell state value per terminal cell
 - Stores optional foreground colors per cell
 - Stores optional background colors per cell
 - Stores an optional text overlay layer per cell
@@ -55,17 +57,17 @@ Current design goals:
 3. Explicit pixel coordinate conversion
 4. Rendering that can target a `String` or any `fmt::Write`
 
-### `ChartContext`
+### `CellChartContext<R>`
 
-`ChartContext` is the higher-level plotting adapter.
+`CellChartContext<R>` is the higher-level plotting adapter. `ChartContext` remains the default Braille alias for the common plotting path.
 
-- Owns the `BrailleCanvas`
+- Owns the `CellCanvas<R>`
 - Tracks axis scales (`Linear`, `Log10`)
 - Computes auto-ranges and transformed ranges
 - Maps floating-point domain coordinates into canvas pixels
 - Manages axis decorations and chart-level composition through a background mask
 
-`ChartContext` should remain the only place where data-space concerns like ticks, ranges, and scale transforms are centralized.
+`CellChartContext<R>` should remain the only place where data-space concerns like ticks, ranges, and scale transforms are centralized.
 
 ## Rendering Pipeline
 
@@ -75,21 +77,21 @@ Typical flow:
 flowchart LR
     A[User data] --> B[ChartContext range and scale transforms]
     B --> C[Pixel mapping]
-    C --> D[BrailleCanvas raster operations]
+    C --> D[CellCanvas raster operations]
     D --> E[Color and text overlays]
     E --> F[Rendered terminal output]
 ```
 
 The important boundary is between data-space and pixel-space:
 
-- `ChartContext` decides where data should land
-- `BrailleCanvas` decides how that landing is rasterized into Braille cells
+- `CellChartContext<R>` decides where data should land
+- `CellCanvas<R>` decides how that landing is rasterized into renderer-specific cells
 
 ## Composition Model
 
 The current composition model uses four parallel concerns at the cell level:
 
-1. Braille mask bits for dot occupancy
+1. Renderer-specific cell occupancy or mask state
 2. Optional foreground color
 3. Optional background color
 4. Optional text overlay
@@ -146,44 +148,51 @@ Use these rules when deciding where code belongs:
 
 - If it operates on pixels, masks, colors, or text cells, it belongs somewhere under `src/canvas/`.
 - If it operates on `f64` data, ranges, scales, ticks, or chart presentation, it belongs somewhere under `src/charts/`.
+- If it operates on reusable world-space vectors, projection, z-buffers, or mesh generation while still targeting screen-space raster output, it belongs in `src/three_d.rs`.
 - If it only improves import ergonomics, it belongs in `src/prelude.rs`.
 - If it changes the user-visible crate contract, it must be reflected in `src/lib.rs` and documented.
 
-## Pluggable Cell Renderers Checklist
+## Planning Status
 
-This is the planned implementation path for renderer-pluggable terminal cells such as Braille, Quadrants, and HalfBlocks.
+This section is the source of truth for the next architectural slices. Keep it ordered, implementation-oriented, and update statuses when slices land.
 
-### Design Constraints
+### Completed Foundations
 
-- Keep Braille as the default renderer and benchmark baseline.
-- Use static dispatch in the hot path: prefer `CellCanvas<R>` over trait objects inside per-pixel loops.
-- Treat renderer choice as a cell encoding concern, not a charting concern.
-- Do not market every renderer as "higher resolution". Braille remains the densest built-in layout at `2x4` sub-pixels per cell.
-- HalfBlocks use a richer cell appearance model than the original single-foreground-color-per-cell design.
+- [x] Split the core crate into focused canvas and chart submodules.
+- [x] Generalize the raster core around `CellCanvas<R>` and `CellRenderer`.
+- [x] Preserve ergonomic aliases for Braille while adding HalfBlock and Quadrant renderers.
+- [x] Generalize the chart layer around `CellChartContext<R>`.
+- [x] Add background-aware cell styling for richer renderer behavior.
+- [x] Add cell-space HUD helpers for panels, labels, and top-left screen text.
+- [x] Promote reusable 3D math, projection, and z-buffer helpers into `txtplot::three_d`.
 
-### Implementation Checklist
+### Renderer Program Status
 
-- [x] Introduce a `CellRenderer` trait that defines cell geometry and encoding hooks.
-  It should own things like `CELL_WIDTH`, `CELL_HEIGHT`, sub-pixel set/unset behavior, and cell-to-terminal output.
-- [x] Refactor the raster core into a generic `CellCanvas<R: CellRenderer>`.
-  Move Braille-specific mask math and glyph emission out of the core canvas and into a dedicated renderer implementation.
-- [x] Preserve the current public default with compatibility aliases or wrappers.
-  `BrailleCanvas` should remain the ergonomic default even if it becomes `type BrailleCanvas = CellCanvas<BrailleRenderer>`.
-- [x] Generalize `ChartContext` over the renderer type.
-  Plotting code should work with alternate cell renderers without duplicating axis, range, or series logic.
-- [x] Implement `QuadrantRenderer` first.
-  It is the lowest-risk validation step because it fits the current cell-color model more closely than HalfBlocks.
-- [x] Extend cell state for `HalfBlockRenderer`.
-  This likely means foreground/background color support or another richer per-cell reduction model instead of the current single optional foreground color.
-- [ ] Keep runtime renderer selection above the hot path.
-  If runtime switching is added, choose the renderer at construction boundaries rather than paying dynamic-dispatch cost for every pixel write.
-- [ ] Add renderer-specific tests, benchmarks, examples, and docs.
-  Include pixel-dimension tests, render goldens, compatibility coverage for existing APIs, and performance comparisons against Braille.
+The renderer architecture is largely complete. The remaining renderer work is:
 
-### Suggested Rollout Order
+- [ ] Runtime renderer selection helpers.
+  Choose the renderer at construction boundaries instead of paying dynamic-dispatch cost in per-pixel loops. This likely means a `RendererKind` enum plus helper constructors or factories.
+- [ ] Renderer benchmark and golden coverage.
+  Tests, examples, and docs are already present. What remains is systematic performance comparison and stable render snapshots for Braille, HalfBlock, and Quadrant output.
 
-1. Add `CellRenderer` and `CellCanvas<R>` with Braille only and no behavior change.
-2. Genericize `ChartContext` while keeping Braille as the default type parameter.
-3. Add `QuadrantRenderer` and validate the design.
-4. Rework cell color/state as needed for `HalfBlockRenderer`.
-5. Add runtime selection helpers, examples, benchmarks, and migration docs.
+### Active Slice Roadmap
+
+1. Runtime renderer selection helpers.
+   Goal: let applications choose Braille, HalfBlock, or Quadrant from config or CLI input without giving up static dispatch inside the hot path.
+   Likely output: `RendererKind`, construction helpers, and a small example showing runtime selection.
+
+2. Renderer benchmarks and comparison artifacts.
+   Goal: turn the renderer work into a measured contract instead of a qualitative feature.
+   Likely output: benches for chart-heavy and raster-heavy scenes, plus a few stable renderer comparison outputs.
+
+3. Chart presentation layer improvements.
+   Goal: close the gap between “plotting library” and “terminal dashboard toolkit”.
+   Scope: automatic legend box, anchored annotations, and better chart-level panel integration on top of the new HUD primitives.
+
+4. Reusable 3D interaction helpers.
+   Goal: promote the shared overlap that still lives only in examples when it becomes clearly generic.
+   Likely candidates: picking/depth-id buffers, orbit camera helpers, or camera-control utilities.
+   Non-goal: shipping a full retained-mode scene graph.
+
+5. Matrix and field-style plotting.
+   Goal: broaden the analytical surface beyond line/scatter/bar/pie into heatmaps, image-like plots, and related raster-backed analytical views.

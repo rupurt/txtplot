@@ -4,7 +4,7 @@ High-performance terminal plotting for Rust.
 
 `txtplot` renders mathematical plots, 3D visualizations, games, and complex terminal interfaces using Unicode Braille and block characters plus ANSI colors.
 
-Unlike many TUI plotting libraries, `txtplot` is designed for speed: it uses flat memory buffers (`Vec<u8>`), bitwise operations, clipping, and a zero-allocation rendering path to support real-time terminal graphics.
+Unlike many TUI plotting libraries, `txtplot` is designed for speed: it uses flat contiguous buffers, renderer-specific cell encodings, clipping, and a zero-allocation rendering path to support real-time terminal graphics.
 
 License: [MIT](LICENSE).
 
@@ -246,7 +246,7 @@ cargo run --release --example solarsystem_kepler
 cargo run --release --example sprite_demo
 ```
 
-8. Interactive fractals
+9. Interactive fractals
 
 ```bash
 cargo run --release --example fractalmove
@@ -263,7 +263,9 @@ In a benchmark with a 236x104 sub-pixel canvas filled with trigonometric noise a
 
 ## Roadmap
 
-- [x] Flat `Vec<u8>` buffers for memory efficiency
+Detailed implementation planning now lives in `ARCHITECTURE.md`. The list below is only the user-facing summary.
+
+- [x] Flat contiguous buffers for memory efficiency
 - [x] Explicit coordinate APIs for screen and cartesian modes
 - [x] Cohen-Sutherland line clipping
 - [x] Zero-allocation rendering via `render_to`
