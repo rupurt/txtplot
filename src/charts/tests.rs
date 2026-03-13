@@ -1,10 +1,26 @@
-use super::{AxisScale, ChartContext};
+use super::{AxisScale, CellChartContext, ChartContext};
+use crate::canvas::CellRenderer;
 
 fn visible_render(chart: &ChartContext) -> String {
     chart
         .canvas
         .render_with_options(false, None)
         .replace('\u{2800}', " ")
+}
+
+fn visible_renderer_chart_render<R: CellRenderer>(chart: &CellChartContext<R>) -> String {
+    chart
+        .canvas
+        .render_with_options(false, None)
+        .replace('\u{2800}', " ")
+}
+
+fn build_renderer_chart<R: CellRenderer>() -> CellChartContext<R> {
+    let mut chart = CellChartContext::<R>::with_dimensions(8, 4);
+    chart.draw_grid(4, 2, None);
+    chart.draw_axes((0.0, 4.0), (-1.0, 1.0), None);
+    chart.plot_function(|x: f64| x.sin(), 0.0, 4.0, None);
+    chart
 }
 
 #[test]
@@ -88,5 +104,21 @@ fn log_axes_render_power_of_ten_labels() {
     assert_eq!(
         visible_render(&chart),
         "1e3               \n⢸                 \n100               \n10                \n⢸                 \n1⠤⠤⠤⠤⠤10⠤⠤⠤100⠤1e3\n"
+    );
+}
+
+#[test]
+fn renderer_chart_scene_outputs_remain_stable() {
+    assert_eq!(
+        visible_renderer_chart_render(&build_renderer_chart::<crate::BrailleRenderer>()),
+        "1.0⠒⢆ ⡇ \n0.3⣀⣇⠣⡀⣀\n-0.3⡇ ⠱⡀\n-11.34.0\n"
+    );
+    assert_eq!(
+        visible_renderer_chart_render(&build_renderer_chart::<crate::HalfBlockRenderer>()),
+        "1.0▄█ █ \n0.3▄█▀▄▄\n-0.3█ ▀▄\n-11.34.0\n"
+    );
+    assert_eq!(
+        visible_renderer_chart_render(&build_renderer_chart::<crate::QuadrantRenderer>()),
+        "1.0▀▙ ▌ \n0.3▄▙▚▙▄\n-0.3▌ ▀▖\n-11.34.0\n"
     );
 }

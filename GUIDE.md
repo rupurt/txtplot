@@ -23,6 +23,7 @@ Rule of thumb:
 
 - If your data starts as `(x, y)` values, use `ChartContext`
 - If your data starts as projected pixels, use a canvas directly
+- If the renderer comes from CLI or config input, parse `RendererKind` and dispatch once with `with_renderer!`
 
 ## Renderer Choice
 
@@ -49,6 +50,14 @@ Use `HalfBlockChartContext`, `HalfBlockCanvas`, or `CellChartContext<HalfBlockRe
 - `1x2` sub-pixels per cell
 - Uses foreground and background ANSI channels to split top and bottom halves
 - Useful for dashboards, sprite-like UI, and bold chart variants where color contrast matters more than maximum density
+
+### Runtime Selection
+
+Use `RendererKind` plus `with_renderer!` when the renderer is chosen at runtime.
+
+- Parse the renderer from CLI flags, config, or environment
+- Dispatch once at the construction boundary
+- Keep the body of the rendering code generic over `CellRenderer`
 
 ## Mathematical Plots
 
@@ -202,6 +211,7 @@ Use the examples directory by intent:
 
 - `demo` for the general chart gallery
 - `renderer_showcase` for Braille vs half-block vs quadrant comparison
+- `runtime_renderer` for CLI-driven renderer selection
 - `vol_surface` for 3D projected surfaces
 - `3dengine` for low-level 3D raster patterns
 - `solarsystem_kepler` for larger scene orchestration

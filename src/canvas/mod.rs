@@ -4,6 +4,7 @@ mod pixels;
 mod primitives;
 mod render;
 mod renderer;
+mod selection;
 mod ui;
 
 #[cfg(test)]
@@ -14,6 +15,7 @@ use std::marker::PhantomData;
 
 pub use renderer::CellAppearance;
 pub use renderer::{BrailleRenderer, CellRenderer, HalfBlockRenderer, QuadrantRenderer};
+pub use selection::RendererKind;
 pub use ui::{CellRect, PanelStyle};
 
 #[derive(Clone, Copy, PartialEq, Eq)]

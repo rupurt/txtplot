@@ -1,6 +1,6 @@
 pub use crate::canvas::{
     BrailleCanvas, BrailleRenderer, CellCanvas, CellRect, CellRenderer, ColorBlend,
-    HalfBlockCanvas, HalfBlockRenderer, PanelStyle, QuadrantCanvas, QuadrantRenderer,
+    HalfBlockCanvas, HalfBlockRenderer, PanelStyle, QuadrantCanvas, QuadrantRenderer, RendererKind,
 };
 pub use crate::charts::{
     AxisScale, BrailleChartContext, CellChartContext, ChartContext, HalfBlockChartContext,

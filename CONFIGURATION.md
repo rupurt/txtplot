@@ -51,6 +51,8 @@ The library is configured through Rust types, not a config file.
 |---------|---------|
 | `BrailleCanvas::new(width, height)` / `HalfBlockCanvas::new(...)` / `QuadrantCanvas::new(...)` | Set terminal cell dimensions with a concrete renderer |
 | `CellCanvas::<R>::new(width, height)` | Construct a canvas with an explicit renderer type |
+| `RendererKind` | Represent a renderer selected from runtime input |
+| `with_renderer!` | Dispatch once from a runtime renderer choice into a concrete generic type |
 | `ColorBlend` | Control how per-cell colors are combined |
 | `set_plot_insets` | Reserve margin space in pixel coordinates |
 

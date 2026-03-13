@@ -170,29 +170,21 @@ This section is the source of truth for the next architectural slices. Keep it o
 
 The renderer architecture is largely complete. The remaining renderer work is:
 
-- [ ] Runtime renderer selection helpers.
-  Choose the renderer at construction boundaries instead of paying dynamic-dispatch cost in per-pixel loops. This likely means a `RendererKind` enum plus helper constructors or factories.
-- [ ] Renderer benchmark and golden coverage.
-  Tests, examples, and docs are already present. What remains is systematic performance comparison and stable render snapshots for Braille, HalfBlock, and Quadrant output.
+- [x] Runtime renderer selection helpers.
+  `RendererKind` and `with_renderer!` now allow applications to choose a renderer from runtime input while still constructing concrete generic types inside the selected branch.
+- [x] Renderer benchmark and golden coverage.
+  `canvas_benchmark` now measures chart-heavy and raster-heavy renderer scenes across Braille, HalfBlock, and Quadrant, and the test suite includes stable renderer comparison snapshots for both chart and raster output.
 
 ### Active Slice Roadmap
 
-1. Runtime renderer selection helpers.
-   Goal: let applications choose Braille, HalfBlock, or Quadrant from config or CLI input without giving up static dispatch inside the hot path.
-   Likely output: `RendererKind`, construction helpers, and a small example showing runtime selection.
-
-2. Renderer benchmarks and comparison artifacts.
-   Goal: turn the renderer work into a measured contract instead of a qualitative feature.
-   Likely output: benches for chart-heavy and raster-heavy scenes, plus a few stable renderer comparison outputs.
-
-3. Chart presentation layer improvements.
+1. Chart presentation layer improvements.
    Goal: close the gap between “plotting library” and “terminal dashboard toolkit”.
    Scope: automatic legend box, anchored annotations, and better chart-level panel integration on top of the new HUD primitives.
 
-4. Reusable 3D interaction helpers.
+2. Reusable 3D interaction helpers.
    Goal: promote the shared overlap that still lives only in examples when it becomes clearly generic.
    Likely candidates: picking/depth-id buffers, orbit camera helpers, or camera-control utilities.
    Non-goal: shipping a full retained-mode scene graph.
 
-5. Matrix and field-style plotting.
+3. Matrix and field-style plotting.
    Goal: broaden the analytical surface beyond line/scatter/bar/pie into heatmaps, image-like plots, and related raster-backed analytical views.

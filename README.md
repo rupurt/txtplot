@@ -134,6 +134,14 @@ Braille remains the default renderer, and `HalfBlockCanvas` / `HalfBlockChartCon
 cargo run --release --example renderer_showcase
 ```
 
+### Runtime Renderer Selection
+
+If you want to choose a renderer from CLI or config input while still constructing a concrete generic chart or canvas, use `RendererKind` together with `with_renderer!`:
+
+```bash
+cargo run --release --example runtime_renderer -- halfblock
+```
+
 ### 3D Surface Example
 
 `txtplot` does not ship a full scene graph, but it now exports reusable 3D math, projection, and z-buffer helpers under `txtplot::three_d`. The surface example projects a volatility mesh into terminal pixels, uses a z-buffer for occlusion, and overlays a gradient-ascent path:
@@ -222,31 +230,37 @@ cargo run --release --example vol_surface
 cargo run --release --example renderer_showcase
 ```
 
-5. t-SNE embedding with nearest-neighbor graph
+5. Runtime renderer selection from CLI input
+
+```bash
+cargo run --release --example runtime_renderer -- quadrant
+```
+
+6. t-SNE embedding with nearest-neighbor graph
 
 ```bash
 cargo run --release --example tsne_neighbors
 ```
 
-6. 3D gallery with camera, z-buffer, and zoom
+7. 3D gallery with camera, z-buffer, and zoom
 
 ```bash
 cargo run --release --example 3dengine
 ```
 
-7. Solar system Kepler 3D
+8. Solar system Kepler 3D
 
 ```bash
 cargo run --release --example solarsystem_kepler
 ```
 
-8. Sprite engine
+9. Sprite engine
 
 ```bash
 cargo run --release --example sprite_demo
 ```
 
-9. Interactive fractals
+10. Interactive fractals
 
 ```bash
 cargo run --release --example fractalmove
@@ -261,6 +275,8 @@ In a benchmark with a 236x104 sub-pixel canvas filled with trigonometric noise a
 - Debug mode: about 60 FPS
 - Release mode: about 1600+ FPS
 
+Use `just bench` or `cargo bench --bench canvas_benchmark` to run the current Criterion suite. It now includes renderer comparison groups for chart-heavy and raster-heavy scenes across Braille, HalfBlock, and Quadrant output.
+
 ## Roadmap
 
 Detailed implementation planning now lives in `ARCHITECTURE.md`. The list below is only the user-facing summary.
@@ -274,7 +290,7 @@ Detailed implementation planning now lives in `ARCHITECTURE.md`. The list below 
 - [x] Logarithmic scaling support
 - [ ] Automatic legend box
 - [x] Trait-based pluggable terminal renderers
-- [ ] Runtime renderer selection helpers
+- [x] Runtime renderer selection helpers
 
 ## License
 

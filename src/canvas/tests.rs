@@ -1,5 +1,29 @@
-use super::{BrailleCanvas, CellRect, HalfBlockCanvas, PanelStyle, QuadrantCanvas};
+use super::{
+    BrailleCanvas, CellCanvas, CellRect, CellRenderer, HalfBlockCanvas, PanelStyle, QuadrantCanvas,
+};
 use colored::Color;
+
+fn visible_canvas_render<R: CellRenderer>(canvas: &CellCanvas<R>) -> String {
+    canvas.render_no_color().replace('\u{2800}', " ")
+}
+
+fn build_renderer_raster_scene<R: CellRenderer>() -> CellCanvas<R> {
+    let mut canvas = CellCanvas::<R>::new(4, 2);
+    let max_x = canvas.pixel_width().saturating_sub(1) as isize;
+    let max_y = canvas.pixel_height().saturating_sub(1) as isize;
+
+    canvas.line_screen(0, 0, max_x, max_y, None);
+    canvas.line_screen(0, max_y, max_x, 0, None);
+    canvas.rect_filled(
+        (canvas.pixel_width() / 3) as isize,
+        (canvas.pixel_height() / 4) as isize,
+        (canvas.pixel_width() / 3).max(1),
+        (canvas.pixel_height() / 2).max(1),
+        None,
+    );
+
+    canvas
+}
 
 #[test]
 fn overlay_replaces_existing_braille_cells() {
@@ -179,4 +203,20 @@ fn panel_screen_draws_box_and_title() {
     assert!(rendered.contains('└'));
     assert!(rendered.contains('┘'));
     assert!(rendered.contains("CPU"));
+}
+
+#[test]
+fn renderer_raster_scene_outputs_remain_stable() {
+    assert_eq!(
+        visible_canvas_render(&build_renderer_raster_scene::<super::BrailleRenderer>()),
+        "⠑⣤⡠⠊\n⡠⠛⠑⢄\n"
+    );
+    assert_eq!(
+        visible_canvas_render(&build_renderer_raster_scene::<super::HalfBlockRenderer>()),
+        "▀▄▄▀\n▄▀▀▄\n"
+    );
+    assert_eq!(
+        visible_canvas_render(&build_renderer_raster_scene::<super::QuadrantRenderer>()),
+        "▀▄▄▀\n▄▀▀▄\n"
+    );
 }

@@ -18,6 +18,9 @@ clippy:
 test:
   cargo nextest run
 
+bench:
+  cargo bench --bench canvas_benchmark
+
 check: fmt-check cargo-check clippy test
 
 flake-check:
