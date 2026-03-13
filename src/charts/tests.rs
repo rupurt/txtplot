@@ -1,5 +1,6 @@
 use super::{AxisScale, CellChartContext, ChartContext};
-use crate::canvas::CellRenderer;
+use crate::canvas::{CellRenderer, TextStyle};
+use colored::Color;
 
 fn visible_render(chart: &ChartContext) -> String {
     chart
@@ -121,4 +122,21 @@ fn renderer_chart_scene_outputs_remain_stable() {
         visible_renderer_chart_render(&build_renderer_chart::<crate::QuadrantRenderer>()),
         "1.0▀▙ ▌ \n0.3▄▙▚▙▄\n-0.3▌ ▀▖\n-11.34.0\n"
     );
+}
+
+#[test]
+fn text_styled_emits_dim_chart_label() {
+    let mut chart = ChartContext::new(4, 2);
+    chart.text_styled(
+        "A",
+        0.5,
+        0.5,
+        TextStyle::new().with_foreground(Color::White).dim(),
+    );
+
+    let rendered = chart.canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[37m"));
+    assert!(rendered.contains("\x1b[2m"));
+    assert!(rendered.contains('A'));
 }

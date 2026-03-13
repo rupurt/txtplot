@@ -1,4 +1,4 @@
-use super::{CellCanvas, CellRenderer};
+use super::{CellCanvas, CellRenderer, TextStyle};
 use colored::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -48,25 +48,54 @@ impl Default for PanelStyle {
 }
 
 impl<R: CellRenderer> CellCanvas<R> {
-    pub fn set_char_screen(&mut self, col: usize, row: usize, c: char, color: Option<Color>) {
+    fn apply_text_style_impl(&mut self, idx: usize, style: TextStyle, write_background: bool) {
+        if let Some(color) = style.foreground {
+            self.colors[idx] = Some(color);
+        }
+        if write_background || style.background.is_some() {
+            self.background_colors[idx] = style.background;
+        }
+        self.text_intensity[idx] = style.intensity;
+    }
+
+    pub fn set_char_screen_styled(&mut self, col: usize, row: usize, c: char, style: TextStyle) {
         if col >= self.width || row >= self.height {
             return;
         }
 
         let idx = self.idx(col, row);
         self.text_layer[idx] = Some(c);
-        if let Some(color) = color {
-            self.colors[idx] = Some(color);
-        }
+        self.apply_text_style_impl(idx, style, false);
     }
 
-    pub fn text_screen(&mut self, col: usize, row: usize, text: &str, color: Option<Color>) {
+    pub fn set_char_screen(&mut self, col: usize, row: usize, c: char, color: Option<Color>) {
+        self.set_char_screen_styled(col, row, c, TextStyle::from(color));
+    }
+
+    pub fn text_screen_styled(&mut self, col: usize, row: usize, text: &str, style: TextStyle) {
         for (offset, ch) in text.chars().enumerate() {
             let target_col = col.saturating_add(offset);
             if target_col >= self.width {
                 break;
             }
-            self.set_char_screen(target_col, row, ch, color);
+            self.set_char_screen_styled(target_col, row, ch, style);
+        }
+    }
+
+    pub fn text_screen(&mut self, col: usize, row: usize, text: &str, color: Option<Color>) {
+        self.text_screen_styled(col, row, text, TextStyle::from(color));
+    }
+
+    pub fn label_screen_styled(&mut self, col: usize, row: usize, text: &str, style: TextStyle) {
+        for (offset, ch) in text.chars().enumerate() {
+            let target_col = col.saturating_add(offset);
+            if target_col >= self.width {
+                break;
+            }
+
+            let idx = self.idx(target_col, row);
+            self.text_layer[idx] = Some(ch);
+            self.apply_text_style_impl(idx, style, true);
         }
     }
 
@@ -78,15 +107,16 @@ impl<R: CellRenderer> CellCanvas<R> {
         foreground: Option<Color>,
         background: Option<Color>,
     ) {
-        for (offset, ch) in text.chars().enumerate() {
-            let target_col = col.saturating_add(offset);
-            if target_col >= self.width {
-                break;
-            }
-
-            self.set_cell_background_impl(target_col, row, background);
-            self.set_char_screen(target_col, row, ch, foreground);
-        }
+        self.label_screen_styled(
+            col,
+            row,
+            text,
+            TextStyle {
+                foreground,
+                background,
+                ..TextStyle::default()
+            },
+        );
     }
 
     pub fn fill_cell_rect_screen(&mut self, rect: CellRect, background: Option<Color>) {

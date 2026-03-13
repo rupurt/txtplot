@@ -33,7 +33,8 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
   - `unset_pixel` and `toggle_pixel`
   - color blending modes with `Overwrite` and `KeepFirst`
   - cell background colors for terminal panels and HUD-style layouts
-  - cell-space UI helpers with `text_screen()`, `label_screen()`, and `panel_screen()`
+  - styled text with foreground, background, plus `Normal` / `Bold` / `Dim` intensity
+  - cell-space UI helpers with `text_screen()`, `text_screen_styled()`, `label_screen()`, and `panel_screen()`
 - Drawing primitives:
   - lines, circles, polygons
   - filled shapes via `rect_filled` and `circle_filled`
@@ -76,6 +77,33 @@ fn main() {
     );
     chart.text("sin(x)", 0.75, 0.85, Some(Color::Cyan));
     chart.text("0.5*cos(0.5x)", 0.56, 0.10, Some(Color::Magenta));
+
+    println!("{}", chart.canvas.render());
+}
+```
+
+### Styled Text Labels
+
+Use `text_styled()` or the screen-space styled text helpers when you need label emphasis without changing the label content:
+
+```rust
+use colored::Color;
+use txtplot::{ChartContext, TextStyle};
+
+fn main() {
+    let mut chart = ChartContext::new(40, 10);
+    chart.text_styled(
+        "core-node",
+        0.45,
+        0.75,
+        TextStyle::new().with_foreground(Color::BrightWhite).bold(),
+    );
+    chart.text_styled(
+        "outer-node",
+        0.55,
+        0.30,
+        TextStyle::new().with_foreground(Color::BrightBlack).dim(),
+    );
 
     println!("{}", chart.canvas.render());
 }

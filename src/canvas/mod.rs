@@ -5,6 +5,7 @@ mod primitives;
 mod render;
 mod renderer;
 mod selection;
+mod text;
 mod ui;
 
 #[cfg(test)]
@@ -16,6 +17,7 @@ use std::marker::PhantomData;
 pub use renderer::CellAppearance;
 pub use renderer::{BrailleRenderer, CellRenderer, HalfBlockRenderer, QuadrantRenderer};
 pub use selection::RendererKind;
+pub use text::{TextIntensity, TextStyle};
 pub use ui::{CellRect, PanelStyle};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -36,6 +38,7 @@ pub struct CellCanvas<R: CellRenderer> {
     colors: Vec<Option<Color>>,
     background_colors: Vec<Option<Color>>,
     text_layer: Vec<Option<char>>,
+    text_intensity: Vec<TextIntensity>,
     _renderer: PhantomData<R>,
 }
 

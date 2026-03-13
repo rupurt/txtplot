@@ -1,5 +1,6 @@
 use super::{
     BrailleCanvas, CellCanvas, CellRect, CellRenderer, HalfBlockCanvas, PanelStyle, QuadrantCanvas,
+    TextIntensity, TextStyle,
 };
 use colored::Color;
 
@@ -177,6 +178,49 @@ fn label_screen_applies_per_cell_background() {
     let rendered = canvas.render_with_options(false, None);
 
     assert!(rendered.contains("\x1b[44m"));
+    assert!(rendered.contains("OK"));
+}
+
+#[test]
+fn text_screen_styled_emits_bold_and_resets_to_normal() {
+    let mut canvas = BrailleCanvas::new(2, 1);
+    canvas.text_screen_styled(
+        0,
+        0,
+        "A",
+        TextStyle::new().with_foreground(Color::BrightWhite).bold(),
+    );
+    canvas.text_screen_styled(
+        1,
+        0,
+        "B",
+        TextStyle::new().with_foreground(Color::BrightWhite),
+    );
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[1mA"));
+    assert!(rendered.contains("\x1b[22mB"));
+}
+
+#[test]
+fn label_screen_styled_emits_dim_text() {
+    let mut canvas = BrailleCanvas::new(2, 1);
+    canvas.label_screen_styled(
+        0,
+        0,
+        "OK",
+        TextStyle {
+            foreground: Some(Color::White),
+            background: Some(Color::Blue),
+            intensity: TextIntensity::Dim,
+        },
+    );
+
+    let rendered = canvas.render_with_options(false, None);
+
+    assert!(rendered.contains("\x1b[44m"));
+    assert!(rendered.contains("\x1b[2m"));
     assert!(rendered.contains("OK"));
 }
 

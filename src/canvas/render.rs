@@ -1,4 +1,4 @@
-use super::{CellCanvas, CellRenderer};
+use super::{CellCanvas, CellRenderer, TextIntensity};
 use colored::Color;
 use std::fmt::{self, Write};
 
@@ -51,10 +51,15 @@ impl<R: CellRenderer> CellCanvas<R> {
         w: &mut W,
         foreground: Option<Color>,
         background: Option<Color>,
+        intensity: TextIntensity,
         last_foreground: &mut Option<Color>,
         last_background: &mut Option<Color>,
+        last_intensity: &mut TextIntensity,
     ) -> fmt::Result {
-        if foreground == *last_foreground && background == *last_background {
+        if foreground == *last_foreground
+            && background == *last_background
+            && intensity == *last_intensity
+        {
             return Ok(());
         }
 
@@ -69,6 +74,9 @@ impl<R: CellRenderer> CellCanvas<R> {
             if let Some(fg) = foreground {
                 Self::write_ansi_color(w, fg)?;
             }
+            if intensity != TextIntensity::Normal {
+                Self::write_ansi_intensity(w, intensity)?;
+            }
         } else {
             if background != *last_background {
                 if let Some(bg) = background {
@@ -80,11 +88,30 @@ impl<R: CellRenderer> CellCanvas<R> {
                     Self::write_ansi_color(w, fg)?;
                 }
             }
+            if intensity != *last_intensity {
+                if *last_intensity != TextIntensity::Normal && intensity != TextIntensity::Normal {
+                    w.write_str("\x1b[22m")?;
+                }
+                if intensity == TextIntensity::Normal {
+                    w.write_str("\x1b[22m")?;
+                } else {
+                    Self::write_ansi_intensity(w, intensity)?;
+                }
+            }
         }
 
         *last_foreground = foreground;
         *last_background = background;
+        *last_intensity = intensity;
         Ok(())
+    }
+
+    fn write_ansi_intensity<W: Write>(w: &mut W, intensity: TextIntensity) -> fmt::Result {
+        match intensity {
+            TextIntensity::Normal => w.write_str("\x1b[22m"),
+            TextIntensity::Bold => w.write_str("\x1b[1m"),
+            TextIntensity::Dim => w.write_str("\x1b[2m"),
+        }
     }
 
     pub fn render_to<W: Write>(
@@ -108,6 +135,7 @@ impl<R: CellRenderer> CellCanvas<R> {
 
         let mut last_foreground: Option<Color> = None;
         let mut last_background: Option<Color> = None;
+        let mut last_intensity = TextIntensity::Normal;
 
         for row in 0..self.height {
             if show_border {
@@ -127,17 +155,23 @@ impl<R: CellRenderer> CellCanvas<R> {
                     w,
                     appearance.foreground,
                     appearance.background,
+                    self.text_intensity[idx],
                     &mut last_foreground,
                     &mut last_background,
+                    &mut last_intensity,
                 )?;
 
                 w.write_char(appearance.glyph)?;
             }
 
-            if last_foreground.is_some() || last_background.is_some() {
+            if last_foreground.is_some()
+                || last_background.is_some()
+                || last_intensity != TextIntensity::Normal
+            {
                 w.write_str("\x1b[0m")?;
                 last_foreground = None;
                 last_background = None;
+                last_intensity = TextIntensity::Normal;
             }
 
             if show_border {

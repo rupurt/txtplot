@@ -90,6 +90,7 @@ Useful plot features:
 - `line_chart()` for connected series
 - `bar_chart()` and `pie_chart()` for categorical summaries
 - `plot_function()` for mathematical curves
+- `text_styled()` when labels need bold or dim emphasis without changing label length
 - `get_auto_range()` and `get_auto_range_scaled()` for automatic axes
 - `AxisScale::Log10` for logarithmic plots
 
@@ -154,7 +155,8 @@ Good fits for direct-canvas work:
 Useful HUD helpers:
 
 - `text_screen()` for top-left text placement in terminal cell coordinates
-- `label_screen()` for compact status pills and colored labels
+- `text_screen_styled()` for bold or dim terminal labels
+- `label_screen()` / `label_screen_styled()` for compact status pills and colored labels
 - `panel_screen()` for bordered boxes with optional background fill and title text
 
 Recommended examples:

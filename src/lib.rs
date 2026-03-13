@@ -6,6 +6,7 @@ pub mod three_d;
 pub use canvas::{
     BrailleCanvas, BrailleRenderer, CellCanvas, CellRect, CellRenderer, ColorBlend,
     HalfBlockCanvas, HalfBlockRenderer, PanelStyle, QuadrantCanvas, QuadrantRenderer, RendererKind,
+    TextIntensity, TextStyle,
 };
 pub use charts::{
     AxisScale, BrailleChartContext, CellChartContext, ChartContext, HalfBlockChartContext,

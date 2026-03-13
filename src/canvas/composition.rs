@@ -14,6 +14,7 @@ impl<R: CellRenderer> CellCanvas<R> {
             colors: vec![None; size],
             background_colors: vec![None; size],
             text_layer: vec![None; size],
+            text_intensity: vec![super::TextIntensity::Normal; size],
             _renderer: PhantomData,
         }
     }
@@ -33,6 +34,7 @@ impl<R: CellRenderer> CellCanvas<R> {
         self.colors.fill(None);
         self.background_colors.fill(None);
         self.text_layer.fill(None);
+        self.text_intensity.fill(super::TextIntensity::Normal);
         self.plot_left_inset_px = 0;
         self.plot_bottom_inset_px = 0;
     }
@@ -62,6 +64,7 @@ impl<R: CellRenderer> CellCanvas<R> {
                 self.colors[idx] = top.colors[idx];
                 self.background_colors[idx] = top.background_colors[idx];
                 self.text_layer[idx] = top.text_layer[idx];
+                self.text_intensity[idx] = top.text_intensity[idx];
             }
         }
     }
@@ -83,6 +86,7 @@ impl<R: CellRenderer> CellCanvas<R> {
 
             if let Some(ch) = top.text_layer[idx] {
                 self.text_layer[idx] = Some(ch);
+                self.text_intensity[idx] = top.text_intensity[idx];
                 if top.colors[idx].is_some() {
                     self.colors[idx] = top.colors[idx];
                 }
@@ -120,6 +124,7 @@ impl<R: CellRenderer> CellCanvas<R> {
 
             if let Some(ch) = top.text_layer[idx] {
                 self.text_layer[idx] = Some(ch);
+                self.text_intensity[idx] = top.text_intensity[idx];
             }
 
             let keep_existing_color = top.text_layer[idx].is_none()

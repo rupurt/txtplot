@@ -1,9 +1,13 @@
 use super::CellChartContext;
-use crate::canvas::CellRenderer;
+use crate::canvas::{CellRenderer, TextStyle};
 use colored::Color;
 
 impl<R: CellRenderer> CellChartContext<R> {
     pub fn text(&mut self, text: &str, x_norm: f64, y_norm: f64, color: Option<Color>) {
+        self.text_styled(text, x_norm, y_norm, TextStyle::from(color));
+    }
+
+    pub fn text_styled(&mut self, text: &str, x_norm: f64, y_norm: f64, style: TextStyle) {
         let w = self.canvas.width;
         let h = self.canvas.height;
         let cx = (x_norm * w.saturating_sub(1) as f64).round() as usize;
@@ -13,7 +17,7 @@ impl<R: CellRenderer> CellChartContext<R> {
             if cx + i >= w {
                 break;
             }
-            self.canvas.set_char(cx + i, cy, ch, color);
+            self.canvas.set_char_styled(cx + i, cy, ch, style);
         }
     }
 

@@ -1,7 +1,7 @@
 use colored::Color;
 use txtplot::{
     CellCanvas, CellChartContext, CellRect, CellRenderer, ChartContext, HalfBlockChartContext,
-    PanelStyle, QuadrantChartContext,
+    PanelStyle, QuadrantChartContext, TextStyle,
 };
 
 fn build_signal_chart<R: CellRenderer>() -> CellChartContext<R> {
@@ -15,8 +15,18 @@ fn build_signal_chart<R: CellRenderer>() -> CellChartContext<R> {
         10.0,
         Some(Color::Magenta),
     );
-    chart.text("sin(x)", 0.73, 0.84, Some(Color::Cyan));
-    chart.text("0.5*cos(0.5x)", 0.52, 0.08, Some(Color::Magenta));
+    chart.text_styled(
+        "sin(x)",
+        0.73,
+        0.84,
+        TextStyle::new().with_foreground(Color::Cyan).bold(),
+    );
+    chart.text_styled(
+        "0.5*cos(0.5x)",
+        0.52,
+        0.08,
+        TextStyle::new().with_foreground(Color::Magenta).dim(),
+    );
     chart
 }
 
@@ -61,7 +71,12 @@ fn build_raster_demo<R: CellRenderer>() -> CellCanvas<R> {
         Some(Color::BrightWhite),
         Some(Color::BrightBlue),
     );
-    canvas.text_screen(6, 2, "mix", Some(Color::Cyan));
+    canvas.text_screen_styled(
+        6,
+        2,
+        "mix",
+        TextStyle::new().with_foreground(Color::Cyan).dim(),
+    );
 
     canvas
 }

@@ -1,4 +1,4 @@
-use super::{CellCanvas, CellRenderer};
+use super::{CellCanvas, CellRenderer, TextStyle};
 use colored::Color;
 
 impl<R: CellRenderer> CellCanvas<R> {
@@ -83,5 +83,10 @@ impl<R: CellRenderer> CellCanvas<R> {
     pub fn set_char(&mut self, col: usize, row: usize, c: char, color: Option<Color>) {
         let inverted_row = self.height.saturating_sub(1).saturating_sub(row);
         self.set_char_screen(col, inverted_row, c, color);
+    }
+
+    pub fn set_char_styled(&mut self, col: usize, row: usize, c: char, style: TextStyle) {
+        let inverted_row = self.height.saturating_sub(1).saturating_sub(row);
+        self.set_char_screen_styled(col, inverted_row, c, style);
     }
 }
