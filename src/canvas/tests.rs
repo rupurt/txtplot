@@ -235,6 +235,7 @@ fn panel_screen_draws_box_and_title() {
             background_color: Some(Color::BrightBlack),
             title_color: Some(Color::Yellow),
             title_background: Some(Color::Blue),
+            fill_char: Some(' '),
         },
     );
 

@@ -4,7 +4,7 @@ pub use crate::canvas::{
     TextIntensity, TextStyle,
 };
 pub use crate::charts::{
-    AxisScale, BrailleChartContext, CellChartContext, ChartContext, HalfBlockChartContext,
-    QuadrantChartContext,
+    AxisScale, BrailleChartContext, CellChartContext, ChartAnchor, ChartContext,
+    HalfBlockChartContext, QuadrantChartContext,
 };
 pub use crate::three_d::{Projection, Vec3, ZBuffer};

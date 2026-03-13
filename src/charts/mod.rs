@@ -16,6 +16,15 @@ pub enum AxisScale {
     Log10,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChartAnchor {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    Center,
+}
+
 impl AxisScale {
     fn transform(self, value: f64) -> Option<f64> {
         if !value.is_finite() {

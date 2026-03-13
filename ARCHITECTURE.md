@@ -179,7 +179,8 @@ The renderer architecture is largely complete. The remaining renderer work is:
 
 1. Chart presentation layer improvements.
    Goal: close the gap between “plotting library” and “terminal dashboard toolkit”.
-   Scope: automatic legend box, anchored annotations, and better chart-level panel integration on top of the new HUD primitives.
+   Status: [Completed] Added automatic legend box, anchored annotations, and opaque panel integration.
+   Scope: `legend()`, `anchored_text()`, and `ChartAnchor` enable more professional chart layouts.
 
 2. Reusable 3D interaction helpers.
    Goal: promote the shared overlap that still lives only in examples when it becomes clearly generic.

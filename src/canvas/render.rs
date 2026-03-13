@@ -205,7 +205,11 @@ impl<R: CellRenderer> CellCanvas<R> {
         let mut out = String::with_capacity(self.width * self.height + self.height);
         for row in 0..self.height {
             for col in 0..self.width {
-                out.push(R::glyph(self.buffer[self.idx(col, row)]));
+                let idx = self.idx(col, row);
+                let glyph = self.text_layer[idx].unwrap_or_else(|| {
+                    R::glyph(self.buffer[idx])
+                });
+                out.push(glyph);
             }
             out.push('\n');
         }

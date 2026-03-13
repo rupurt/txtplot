@@ -9,6 +9,6 @@ pub use canvas::{
     TextIntensity, TextStyle,
 };
 pub use charts::{
-    AxisScale, BrailleChartContext, CellChartContext, ChartContext, HalfBlockChartContext,
-    QuadrantChartContext,
+    AxisScale, BrailleChartContext, CellChartContext, ChartAnchor, ChartContext,
+    HalfBlockChartContext, QuadrantChartContext,
 };

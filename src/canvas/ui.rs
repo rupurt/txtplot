@@ -34,6 +34,7 @@ pub struct PanelStyle {
     pub background_color: Option<Color>,
     pub title_color: Option<Color>,
     pub title_background: Option<Color>,
+    pub fill_char: Option<char>,
 }
 
 impl Default for PanelStyle {
@@ -43,6 +44,7 @@ impl Default for PanelStyle {
             background_color: None,
             title_color: Some(Color::White),
             title_background: None,
+            fill_char: Some(' '),
         }
     }
 }
@@ -119,7 +121,7 @@ impl<R: CellRenderer> CellCanvas<R> {
         );
     }
 
-    pub fn fill_cell_rect_screen(&mut self, rect: CellRect, background: Option<Color>) {
+    pub fn clear_rect_screen(&mut self, rect: CellRect) {
         let start_col = rect.col.min(self.width);
         let end_col = rect.end_col().min(self.width);
         let start_row = rect.row.min(self.height);
@@ -127,7 +129,29 @@ impl<R: CellRenderer> CellCanvas<R> {
 
         for row in start_row..end_row {
             for col in start_col..end_col {
-                self.set_cell_background_impl(col, row, background);
+                let idx = self.idx(col, row);
+                self.buffer[idx] = R::Cell::default();
+            }
+        }
+    }
+
+    pub fn fill_cell_rect_screen(&mut self, rect: CellRect, background: Option<Color>) {
+        self.fill_cell_rect_screen_styled(rect, None, TextStyle { background, ..TextStyle::default() });
+    }
+
+    pub fn fill_cell_rect_screen_styled(&mut self, rect: CellRect, fill_char: Option<char>, style: TextStyle) {
+        let start_col = rect.col.min(self.width);
+        let end_col = rect.end_col().min(self.width);
+        let start_row = rect.row.min(self.height);
+        let end_row = rect.end_row().min(self.height);
+
+        for row in start_row..end_row {
+            for col in start_col..end_col {
+                let idx = self.idx(col, row);
+                if let Some(c) = fill_char {
+                    self.text_layer[idx] = Some(c);
+                }
+                self.apply_text_style_impl(idx, style, true);
             }
         }
     }
@@ -137,7 +161,15 @@ impl<R: CellRenderer> CellCanvas<R> {
             return;
         }
 
-        self.fill_cell_rect_screen(rect, style.background_color);
+        self.clear_rect_screen(rect);
+        self.fill_cell_rect_screen_styled(
+            rect,
+            style.fill_char,
+            TextStyle {
+                background: style.background_color,
+                ..TextStyle::default()
+            },
+        );
 
         let start_col = rect.col.min(self.width);
         let end_col = rect.end_col().min(self.width);

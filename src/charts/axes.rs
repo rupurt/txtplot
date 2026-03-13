@@ -1,5 +1,5 @@
-use super::CellChartContext;
-use crate::canvas::{CellRenderer, TextStyle};
+use super::{CellChartContext, ChartAnchor};
+use crate::canvas::{CellRect, CellRenderer, PanelStyle, TextStyle};
 use colored::Color;
 
 impl<R: CellRenderer> CellChartContext<R> {
@@ -18,6 +18,92 @@ impl<R: CellRenderer> CellChartContext<R> {
                 break;
             }
             self.canvas.set_char_styled(cx + i, cy, ch, style);
+        }
+    }
+
+    pub fn anchored_text(&mut self, text: &str, anchor: ChartAnchor, color: Option<Color>) {
+        self.anchored_text_styled(text, anchor, TextStyle::from(color));
+    }
+
+    pub fn anchored_text_styled(&mut self, text: &str, anchor: ChartAnchor, style: TextStyle) {
+        let w = self.canvas.width;
+        let text_len = text.chars().count();
+        let w_sub_1 = w.saturating_sub(1) as f64;
+
+        let (x_norm, y_norm) = match anchor {
+            ChartAnchor::TopLeft => (0.0, 1.0),
+            ChartAnchor::TopRight => {
+                if w_sub_1 > 0.0 {
+                    (w.saturating_sub(text_len) as f64 / w_sub_1, 1.0)
+                } else {
+                    (0.0, 1.0)
+                }
+            }
+            ChartAnchor::BottomLeft => (0.0, 0.0),
+            ChartAnchor::BottomRight => {
+                if w_sub_1 > 0.0 {
+                    (w.saturating_sub(text_len) as f64 / w_sub_1, 0.0)
+                } else {
+                    (0.0, 0.0)
+                }
+            }
+            ChartAnchor::Center => {
+                if w_sub_1 > 0.0 {
+                    (
+                        (w.saturating_sub(text_len) as f64 / 2.0) / w_sub_1,
+                        0.5,
+                    )
+                } else {
+                    (0.0, 0.5)
+                }
+            }
+        };
+
+        self.text_styled(text, x_norm.max(0.0), y_norm, style);
+    }
+
+    pub fn legend(&mut self, anchor: ChartAnchor, entries: &[(&str, TextStyle)]) {
+        if entries.is_empty() {
+            return;
+        }
+
+        let max_label_len = entries.iter().map(|(e, _)| e.chars().count()).max().unwrap_or(0);
+        let panel_width = (max_label_len + 5).min(self.canvas.width);
+        let panel_height = (entries.len() + 2).min(self.canvas.height);
+
+        let col = match anchor {
+            ChartAnchor::TopLeft | ChartAnchor::BottomLeft => 1,
+            ChartAnchor::TopRight | ChartAnchor::BottomRight => {
+                self.canvas.width.saturating_sub(panel_width + 1)
+            }
+            ChartAnchor::Center => self.canvas.width.saturating_sub(panel_width) / 2,
+        };
+
+        let row_screen = match anchor {
+            ChartAnchor::TopLeft | ChartAnchor::TopRight => 0,
+            ChartAnchor::BottomLeft | ChartAnchor::BottomRight => {
+                self.canvas.height.saturating_sub(panel_height)
+            }
+            ChartAnchor::Center => self.canvas.height.saturating_sub(panel_height) / 2,
+        };
+
+        self.canvas.panel_screen(
+            CellRect::new(col, row_screen, panel_width, panel_height),
+            None,
+            PanelStyle::default(),
+        );
+
+        for (i, (label, style)) in entries.iter().enumerate() {
+            let row = row_screen + i + 1;
+            if row >= row_screen + panel_height - 1 {
+                break;
+            }
+
+            // Draw marker
+            self.canvas.set_char_screen_styled(col + 1, row, '●', *style);
+            // Draw label
+            self.canvas
+                .text_screen_styled(col + 3, row, label, TextStyle::default());
         }
     }
 

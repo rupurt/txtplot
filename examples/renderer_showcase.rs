@@ -62,6 +62,7 @@ fn build_raster_demo<R: CellRenderer>() -> CellCanvas<R> {
             background_color: Some(Color::BrightBlack),
             title_color: Some(Color::BrightWhite),
             title_background: Some(Color::Blue),
+            fill_char: Some(' '),
         },
     );
     canvas.label_screen(

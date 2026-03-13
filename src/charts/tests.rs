@@ -1,18 +1,48 @@
-use super::{AxisScale, CellChartContext, ChartContext};
+use super::{AxisScale, CellChartContext, ChartAnchor, ChartContext};
 use crate::canvas::{CellRenderer, TextStyle};
 use colored::Color;
+
+#[test]
+fn anchored_text_top_right_aligns_properly() {
+    let mut chart = ChartContext::new(10, 5);
+    chart.anchored_text("ABC", ChartAnchor::TopRight, None);
+
+    let rendered = chart.canvas.render_no_color();
+    // ABC should be at the top right: col 7, 8, 9 of row 0
+    let first_row = rendered.lines().next().unwrap();
+    assert!(first_row.ends_with("ABC"));
+}
+
+#[test]
+fn legend_renders_markers_and_labels() {
+    let mut chart = ChartContext::new(15, 6);
+    let entries = [
+        ("A", TextStyle::new().with_foreground(Color::Cyan)),
+        ("B", TextStyle::new().with_foreground(Color::Magenta)),
+    ];
+    chart.legend(ChartAnchor::TopLeft, &entries);
+
+    let rendered = visible_render(&chart);
+    // Should contain markers (dots) and labels
+    assert!(rendered.contains('●'));
+    assert!(rendered.contains('A'));
+    assert!(rendered.contains('B'));
+    // Should contain box borders
+    assert!(rendered.contains('┌'));
+    assert!(rendered.contains('┐'));
+}
 
 fn visible_render(chart: &ChartContext) -> String {
     chart
         .canvas
-        .render_with_options(false, None)
+        .render_no_color()
         .replace('\u{2800}', " ")
 }
 
 fn visible_renderer_chart_render<R: CellRenderer>(chart: &CellChartContext<R>) -> String {
     chart
         .canvas
-        .render_with_options(false, None)
+        .render_no_color()
         .replace('\u{2800}', " ")
 }
 
@@ -34,12 +64,12 @@ fn plot_function_renders_over_grid_without_cell_artifacts() {
     assert_eq!(
         chart.canvas.render_no_color(),
         concat!(
-            "⢸⠀⢠⠒⠢⡀⡇⠀⠀⡇⠀⠀\n",
+            "1.0⠒⠢⡀⡇⠀⠀⡇⠀⠀\n",
             "⢸⢠⠃⡇⠀⠱⡀⠀⠀⡇⠀⠀\n",
-            "⢠⠃⣀⣇⣀⣀⡇⣀⣀⣇⣀⣀\n",
-            "⢸⠀⠀⡇⠀⠀⠸⡀⠀⡇⠀⢠\n",
+            "0.3⣇⣀⣀⡇⣀⣀⣇⣀⣀\n",
+            "-0.3⠀⠀⠸⡀⠀⡇⠀⢠\n",
             "⢸⠀⠀⡇⠀⠀⡇⠱⡀⡇⢠⠃\n",
-            "⠸⠤⠤⡧⠤⠤⡧⠤⠑⠒⠁⠤\n",
+            "-10.2.04.6.0\n",
         ),
     );
 }
@@ -55,11 +85,11 @@ fn multiple_foreground_plots_keep_crossings() {
     assert_eq!(
         chart.canvas.render_no_color(),
         concat!(
-            "⠐⠒⡴⡒⢄⡇⠀⠀⠀⠀\n",
-            "⢸⡜⠀⠈⢺⡄⠀⠀⠀⠀\n",
+            "1.0⡒⢄⡇⠀⠀⠀⠀\n",
+            "0.3⠈⢺⡄⠀⠀⠀⠀\n",
             "⠘⠒⠒⠒⠒⢣⡀⠒⠒⢀\n",
-            "⢸⠀⠀⠀⠀⠈⢗⢄⢀⠎\n",
-            "⠸⠤⠤⠤⠤⡧⠈⠒⠋⠒\n",
+            "-0.3⠀⠈⢗⢄⢀⠎\n",
+            "-102.046.0\n",
         ),
     );
 }
