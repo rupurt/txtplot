@@ -8,5 +8,6 @@ pub use crate::charts::{
     Greyscale, HalfBlockChartContext, QuadrantChartContext, Viridis,
 };
 pub use crate::three_d::{
-    line_z, line_z_id, plot_z, plot_z_id, IdBuffer, OrbitCamera, Projection, Vec3, ZBuffer,
+    line_z, line_z_id, make_box_3d, make_circle_3d, plot_z, plot_z_id, IdBuffer, OrbitCamera,
+    Projection, Vec3, ZBuffer,
 };

@@ -338,6 +338,46 @@ pub fn make_triangle() -> [Vec3; 3] {
     ]
 }
 
+pub fn make_circle_3d(center: Vec3, radius: f64, steps: usize) -> Vec<Vec3> {
+    let mut points = Vec::with_capacity(steps);
+    for i in 0..steps {
+        let angle = i as f64 / steps as f64 * std::f64::consts::TAU;
+        let (sin_a, cos_a) = angle.sin_cos();
+        points.push(center + Vec3::new(cos_a * radius, 0.0, sin_a * radius));
+    }
+    points
+}
+
+pub struct Box3D {
+    pub vertices: [Vec3; 8],
+    pub edges: [(usize, usize); 12],
+}
+
+pub fn make_box_3d(center: Vec3, width: f64, height: f64, depth: f64) -> Box3D {
+    let w2 = width / 2.0;
+    let h2 = height / 2.0;
+    let d2 = depth / 2.0;
+
+    let vertices = [
+        center + Vec3::new(-w2, -h2, -d2),
+        center + Vec3::new(w2, -h2, -d2),
+        center + Vec3::new(w2, h2, -d2),
+        center + Vec3::new(-w2, h2, -d2),
+        center + Vec3::new(-w2, -h2, d2),
+        center + Vec3::new(w2, -h2, d2),
+        center + Vec3::new(w2, h2, d2),
+        center + Vec3::new(-w2, h2, d2),
+    ];
+
+    let edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7),
+    ];
+
+    Box3D { vertices, edges }
+}
+
 pub fn plot_z<R: CellRenderer>(
     canvas: &mut CellCanvas<R>,
     zbuf: &mut ZBuffer,
