@@ -9,6 +9,33 @@ mod tests;
 use crate::canvas::{
     BrailleRenderer, CellCanvas, CellRenderer, HalfBlockRenderer, QuadrantRenderer,
 };
+use colored::Color;
+
+pub trait ColorScale {
+    fn map(&self, value: f64) -> Color;
+}
+
+pub struct Viridis;
+
+impl ColorScale for Viridis {
+    fn map(&self, value: f64) -> Color {
+        let t = value.clamp(0.0, 1.0);
+        // Simplified Viridis approximation
+        let r = (255.0 * (0.267 + 1.0 * t - 1.2 * t * t)).clamp(0.0, 255.0) as u8;
+        let g = (255.0 * (0.004 + 1.5 * t - 0.8 * t * t)).clamp(0.0, 255.0) as u8;
+        let b = (255.0 * (0.329 + 0.2 * t + 0.4 * t * t)).clamp(0.0, 255.0) as u8;
+        Color::TrueColor { r, g, b }
+    }
+}
+
+pub struct Greyscale;
+
+impl ColorScale for Greyscale {
+    fn map(&self, value: f64) -> Color {
+        let l = (value.clamp(0.0, 1.0) * 255.0) as u8;
+        Color::TrueColor { r: l, g: l, b: l }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AxisScale {

@@ -189,3 +189,4 @@ The renderer architecture is largely complete. The remaining renderer work is:
 
 3. Matrix and field-style plotting.
    Goal: broaden the analytical surface beyond line/scatter/bar/pie into heatmaps, image-like plots, and related raster-backed analytical views.
+   Status: [Completed] Added `heatmap()`, `ColorScale` trait, and `Viridis`/`Greyscale` palettes with advanced Braille dithering.

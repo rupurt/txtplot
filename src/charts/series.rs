@@ -1,4 +1,4 @@
-use super::{AxisScale, CellChartContext, PlotGeometry, PlotScales};
+use super::{AxisScale, CellChartContext, ColorScale, PlotGeometry, PlotScales};
 use crate::canvas::CellRenderer;
 use colored::Color;
 use std::f64::consts::PI;
@@ -30,6 +30,71 @@ fn map_coords_for_size<R: CellRenderer>(
 }
 
 impl<R: CellRenderer> CellChartContext<R> {
+    /// Draws a heatmap from a 2D grid of values (0.0 to 1.0).
+    ///
+    /// The input data should be provided in a flat row-major slice of size `data_width * data_height`.
+    pub fn heatmap(
+        &mut self,
+        data: &[f64],
+        data_width: usize,
+        data_height: usize,
+        scale: &dyn ColorScale,
+    ) {
+        if data.is_empty() || data_width == 0 || data_height == 0 {
+            return;
+        }
+
+        let w_px = self.canvas.pixel_width();
+        let h_px = self.canvas.pixel_height();
+
+        self.draw_foreground_overlay(|overlay| {
+            for py in 0..h_px {
+                for px in 0..w_px {
+                    // Map canvas pixel to data coordinates
+                    let dx = (px as f64 / w_px as f64 * data_width as f64).floor() as usize;
+                    let dy = (py as f64 / h_px as f64 * data_height as f64).floor() as usize;
+                    let dy = data_height.saturating_sub(1).saturating_sub(dy); // Flip Y for Cartesian
+
+                    let idx = dy * data_width + dx;
+                    if idx >= data.len() {
+                        continue;
+                    }
+
+                    let val = data[idx].clamp(0.0, 1.0);
+                    let color = scale.map(val);
+
+                    // Advanced Dithering for Braille:
+                    // If we have multiple pixels in a cell, we can use dot density to represent magnitude.
+                    // For HalfBlock, we just set the pixel.
+                    if R::CELL_WIDTH == 2 && R::CELL_HEIGHT == 4 {
+                        // Braille path: use a threshold to decide if this subpixel should be set.
+                        // We use a simple 2x4 Bayer-like matrix or ordered dither.
+                        let sub_x = px % 2;
+                        let sub_y = py % 4;
+                        let dither_threshold = match (sub_x, sub_y) {
+                            (0, 0) => 0.1,
+                            (1, 2) => 0.2,
+                            (0, 1) => 0.3,
+                            (1, 3) => 0.4,
+                            (1, 0) => 0.5,
+                            (0, 2) => 0.6,
+                            (1, 1) => 0.7,
+                            (0, 3) => 0.8,
+                            _ => 0.9,
+                        };
+
+                        if val >= dither_threshold {
+                            overlay.set_pixel(px, py, Some(color));
+                        }
+                    } else {
+                        // Standard path (HalfBlock, Quadrant)
+                        overlay.set_pixel(px, py, Some(color));
+                    }
+                }
+            }
+        });
+    }
+
     fn line_chart_with_ranges(
         &mut self,
         points: &[(f64, f64)],
