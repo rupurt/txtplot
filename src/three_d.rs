@@ -30,6 +30,14 @@ impl Vec3 {
             self
         }
     }
+
+    pub fn cross(self, other: Self) -> Self {
+        Self::new(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
+    }
 }
 
 impl Add for Vec3 {
@@ -142,6 +150,102 @@ impl Projection {
             scale_x,
             scale_y,
         }
+    }
+}
+
+/// A camera that orbits around a target point.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OrbitCamera {
+    pub target: Vec3,
+    pub distance: f64,
+    pub pitch: f64,
+    pub yaw: f64,
+}
+
+impl OrbitCamera {
+    pub fn new(target: Vec3, distance: f64, pitch: f64, yaw: f64) -> Self {
+        Self {
+            target,
+            distance,
+            pitch,
+            yaw,
+        }
+    }
+
+    /// Computes the camera position in world space.
+    pub fn position(&self) -> Vec3 {
+        let (sin_p, cos_p) = self.pitch.sin_cos();
+        let (sin_y, cos_y) = self.yaw.sin_cos();
+
+        let rel_pos = Vec3::new(
+            self.distance * cos_p * sin_y,
+            self.distance * sin_p,
+            self.distance * cos_p * cos_y,
+        );
+
+        self.target + rel_pos
+    }
+
+    /// Transforms a world-space point to camera-space.
+    pub fn transform(&self, point: Vec3) -> Vec3 {
+        let pos = self.position();
+        let forward = (self.target - pos).normalize();
+        let up_world = Vec3::new(0.0, 1.0, 0.0);
+        let right = forward.cross(up_world).normalize();
+        let up = right.cross(forward).normalize();
+
+        let rel = point - pos;
+        Vec3::new(rel.dot(right), rel.dot(up), rel.dot(forward))
+    }
+
+    /// Projects a world-space point directly to screen coordinates.
+    pub fn project(
+        &self,
+        point: Vec3,
+        canvas_width: f64,
+        canvas_height: f64,
+        projection: Projection,
+    ) -> Option<(isize, isize, f64)> {
+        let cam_point = self.transform(point);
+        project_with_projection(cam_point, canvas_width, canvas_height, projection)
+    }
+}
+
+/// Stores object IDs for picking/interaction.
+#[derive(Clone, Debug, PartialEq)]
+pub struct IdBuffer {
+    width: usize,
+    height: usize,
+    ids: Vec<Option<u32>>,
+}
+
+impl IdBuffer {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            ids: vec![None; width * height],
+        }
+    }
+
+    pub fn from_canvas<R: CellRenderer>(canvas: &CellCanvas<R>) -> Self {
+        Self::new(canvas.pixel_width(), canvas.pixel_height())
+    }
+
+    pub fn clear(&mut self) {
+        self.ids.fill(None);
+    }
+
+    pub fn get(&self, x: usize, y: usize) -> Option<u32> {
+        if x >= self.width || y >= self.height {
+            return None;
+        }
+        self.ids[y * self.width + x]
+    }
+
+    fn set(&mut self, x: usize, y: usize, id: u32) {
+        let idx = y * self.width + x;
+        self.ids[idx] = Some(id);
     }
 }
 
@@ -282,9 +386,67 @@ pub fn line_z<R: CellRenderer>(
     }
 }
 
+pub fn plot_z_id<R: CellRenderer>(
+    canvas: &mut CellCanvas<R>,
+    zbuf: &mut ZBuffer,
+    idbuf: &mut IdBuffer,
+    x: isize,
+    y: isize,
+    depth: f64,
+    color: Color,
+    id: u32,
+) {
+    if x < 0 || y < 0 {
+        return;
+    }
+
+    let x = x as usize;
+    let y = y as usize;
+    if x >= zbuf.width || y >= zbuf.height {
+        return;
+    }
+
+    if zbuf.test_and_set(x, y, depth) {
+        canvas.set_pixel_screen(x, y, Some(color));
+        idbuf.set(x, y, id);
+    }
+}
+
+pub fn line_z_id<R: CellRenderer>(
+    canvas: &mut CellCanvas<R>,
+    zbuf: &mut ZBuffer,
+    idbuf: &mut IdBuffer,
+    start: (isize, isize, f64),
+    end: (isize, isize, f64),
+    color: Color,
+    id: u32,
+) {
+    let steps = (end.0 - start.0).abs().max((end.1 - start.1).abs()).max(1) as usize;
+
+    for step in 0..=steps {
+        let t = step as f64 / steps as f64;
+        let x = start.0 as f64 + (end.0 - start.0) as f64 * t;
+        let y = start.1 as f64 + (end.1 - start.1) as f64 * t;
+        let z = start.2 + (end.2 - start.2) * t;
+        plot_z_id(
+            canvas,
+            zbuf,
+            idbuf,
+            x.round() as isize,
+            y.round() as isize,
+            z,
+            color,
+            id,
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{plot_z, project_with_projection, Projection, Vec3, ZBuffer};
+    use super::{
+        line_z_id, plot_z, plot_z_id, project_with_projection, IdBuffer, OrbitCamera, Projection,
+        Vec3, ZBuffer,
+    };
     use crate::BrailleCanvas;
     use colored::Color;
 
@@ -309,5 +471,83 @@ mod tests {
         let rendered = canvas.render_with_options(false, None);
         assert!(rendered.contains("\x1b[31m"));
         assert!(!rendered.contains("\x1b[34m"));
+    }
+
+    #[test]
+    fn orbit_camera_position_respects_distance() {
+        let cam = OrbitCamera::new(Vec3::new(0.0, 0.0, 0.0), 10.0, 0.0, 0.0);
+        let pos = cam.position();
+        assert!((pos.z - 10.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn id_buffer_records_picking_ids() {
+        let mut canvas = BrailleCanvas::new(1, 1);
+        let mut zbuf = ZBuffer::from_canvas(&canvas);
+        let mut idbuf = IdBuffer::from_canvas(&canvas);
+
+        plot_z_id(
+            &mut canvas,
+            &mut zbuf,
+            &mut idbuf,
+            0,
+            0,
+            1.0,
+            Color::White,
+            42,
+        );
+
+        assert_eq!(idbuf.get(0, 0), Some(42));
+    }
+
+    #[test]
+    fn line_z_id_records_ids() {
+        let mut canvas = BrailleCanvas::new(5, 1);
+        let mut zbuf = ZBuffer::from_canvas(&canvas);
+        let mut idbuf = IdBuffer::from_canvas(&canvas);
+
+        line_z_id(
+            &mut canvas,
+            &mut zbuf,
+            &mut idbuf,
+            (0, 0, 1.0),
+            (4, 0, 1.0),
+            Color::White,
+            7,
+        );
+
+        assert_eq!(idbuf.get(0, 0), Some(7));
+        assert_eq!(idbuf.get(2, 0), Some(7));
+        assert_eq!(idbuf.get(4, 0), Some(7));
+    }
+
+    #[test]
+    fn id_buffer_respects_z_depth() {
+        let mut canvas = BrailleCanvas::new(1, 1);
+        let mut zbuf = ZBuffer::from_canvas(&canvas);
+        let mut idbuf = IdBuffer::from_canvas(&canvas);
+
+        plot_z_id(
+            &mut canvas,
+            &mut zbuf,
+            &mut idbuf,
+            0,
+            0,
+            10.0,
+            Color::White,
+            1,
+        );
+        plot_z_id(
+            &mut canvas,
+            &mut zbuf,
+            &mut idbuf,
+            0,
+            0,
+            5.0,
+            Color::White,
+            2,
+        );
+
+        assert_eq!(idbuf.get(0, 0), Some(2));
     }
 }

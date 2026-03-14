@@ -184,8 +184,8 @@ The renderer architecture is largely complete. The remaining renderer work is:
 
 2. Reusable 3D interaction helpers.
    Goal: promote the shared overlap that still lives only in examples when it becomes clearly generic.
-   Likely candidates: picking/depth-id buffers, orbit camera helpers, or camera-control utilities.
-   Non-goal: shipping a full retained-mode scene graph.
+   Status: [Completed] Added `OrbitCamera`, `IdBuffer`, and picking helpers (`plot_z_id`, `line_z_id`).
+   Scope: Enabled interactive object picking and simplified 3D camera management in the library core.
 
 3. Matrix and field-style plotting.
    Goal: broaden the analytical surface beyond line/scatter/bar/pie into heatmaps, image-like plots, and related raster-backed analytical views.

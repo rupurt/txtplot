@@ -1,5 +1,5 @@
 use colored::Color;
-use txtplot::{ChartAnchor, ChartContext, Greyscale, HalfBlockChartContext, TextStyle, Viridis};
+use txtplot::{ChartAnchor, ChartContext, HalfBlockChartContext, TextStyle, Viridis};
 
 fn main() {
     println!("Heatmap Demo (Viridis Scale)");
