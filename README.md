@@ -35,6 +35,10 @@ If you use Nix, `nix develop` provides the Rust toolchain plus `cargo-nextest`, 
   - cell background colors for terminal panels and HUD-style layouts
   - styled text with foreground, background, plus `Normal` / `Bold` / `Dim` intensity
   - cell-space UI helpers with `text_screen()`, `text_screen_styled()`, `label_screen()`, and `panel_screen()`
+- High-level chart aesthetics:
+  - `legend()`: automatic, opaque legend boxes with color markers
+  - `anchored_text()`: effortless label placement at `TopLeft`, `Center`, etc.
+  - opaque UI panels that clear underlying raster data for professional overlays
 - Drawing primitives:
   - lines, circles, polygons
   - filled shapes via `rect_filled` and `circle_filled`
@@ -103,6 +107,33 @@ fn main() {
         0.55,
         0.30,
         TextStyle::new().with_foreground(Color::BrightBlack).dim(),
+    );
+
+    println!("{}", chart.canvas.render());
+}
+```
+
+### Anchored Text and Legends
+
+Place labels and legends effortlessly using `ChartAnchor` without calculating pixel offsets:
+
+```rust
+use colored::Color;
+use txtplot::{ChartAnchor, ChartContext, TextStyle};
+
+fn main() {
+    let mut chart = ChartContext::new(60, 15);
+    chart.plot_function(|x| x.sin(), 0.0, 10.0, Some(Color::Cyan));
+
+    // Place a legend in the top right
+    let entries = [("Sine Wave", TextStyle::new().with_foreground(Color::Cyan))];
+    chart.legend(ChartAnchor::TopRight, &entries);
+
+    // Anchor a title or status label
+    chart.anchored_text_styled(
+        "LIVE MONITOR",
+        ChartAnchor::TopLeft,
+        TextStyle::new().with_foreground(Color::Yellow).bold(),
     );
 
     println!("{}", chart.canvas.render());

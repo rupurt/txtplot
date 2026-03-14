@@ -94,6 +94,16 @@ Useful plot features:
 - `get_auto_range()` and `get_auto_range_scaled()` for automatic axes
 - `AxisScale::Log10` for logarithmic plots
 
+### Aesthetics and Layout
+
+For professional terminal dashboards, use the anchored layout helpers:
+
+- `anchored_text()` and `anchored_text_styled()`: place labels at fixed positions like `TopRight` or `Center` without computing data-to-pixel mappings.
+- `legend()`: automatically generates an opaque, bordered legend box with color-coded markers and text.
+- `ChartAnchor`: specifies placement for anchored elements, ensuring they remain visible and well-aligned even if the chart size changes.
+
+These helpers use **opaque panels**, which automatically clear the underlying raster data and fill the background, ensuring that annotations are never obscured by crossing data lines.
+
 If you want the same chart flow with a different renderer:
 
 ```rust
